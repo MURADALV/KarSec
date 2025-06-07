@@ -12,3 +12,10 @@ KarSec, Linux tabanlı bir siber güvenlik aracıdır. Komut satırından çalı
 git clone https://github.com/MURADALV/KarSec.git
 cd KarSec
 pip install .
+Nasıl kullanırım?
+karsec --version
+karsec --logfile logs/test.log
+karsec --readlog logs/test.log
+Test nasıl yapılır?
+pytest tests/
+
