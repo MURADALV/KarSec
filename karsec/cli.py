@@ -1,5 +1,6 @@
 import argparse
 import logging
+import sys
 
 from . import __version__
 
@@ -15,6 +16,10 @@ def parse_args(args=None):
         "--logfile",
         help="Yazılacak log dosyasının yolu"
     )
+    parser.add_argument(
+        "--readlog",
+        help="Okunacak log dosyasının yolu"
+    )
     return parser.parse_args(args)
 
 
@@ -22,6 +27,15 @@ def main(argv=None):
     args = parse_args(argv)
     if args.logfile:
         logging.basicConfig(filename=args.logfile, level=logging.INFO)
+    if args.readlog:
+        try:
+            with open(args.readlog, encoding="utf-8") as f:
+                for line in f:
+                    if "ERROR" in line:
+                        print(line.rstrip("\n"))
+        except FileNotFoundError:
+            print(f"Dosya bulunamadi: {args.readlog}", file=sys.stderr)
+            sys.exit(1)
     logging.info("KarSec started")
 
 
