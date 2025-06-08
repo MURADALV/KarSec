@@ -73,11 +73,16 @@ def parse_args(args=None):
         help="list lines mentioning nmap, masscan or nikto",
     )
     analysis.add_argument(
-        "-g",
         "--graph-summary",
         nargs="+",
         metavar=("LOG", "OUT"),
         help="save a bar chart for LOG summary to OUT (default: summary_graph.png)",
+    )
+    analysis.add_argument(
+        "-g",
+        "--graph",
+        action="store_true",
+        help="show bar chart for filtered log categories",
     )
     analysis.add_argument(
         "-w",
@@ -183,6 +188,39 @@ def generate_summary_chart(counts, out_path):
     plt.ylabel("Adet")
     plt.tight_layout()
     plt.savefig(out_path)
+    plt.close()
+    return True
+
+
+def generate_category_chart(lines, out_path="graph_output.png"):
+    """Generate a bar chart for filtered log categories."""
+    try:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except Exception:
+        return False
+
+    categories = ["portscan", "brute-force", "dos"]
+    counts = {c: 0 for c in categories}
+    for line in lines:
+        lower = line.lower()
+        for cat in categories:
+            if cat in lower:
+                counts[cat] += 1
+
+    if not any(counts.values()):
+        return False
+
+    plt.figure(figsize=(8, 6))
+    plt.bar(categories, [counts[c] for c in categories], color=["blue", "orange", "red"])
+    plt.title("Log Kategorileri")
+    plt.xlabel("Kategori")
+    plt.ylabel("Adet")
+    plt.tight_layout()
+    plt.savefig(out_path)
+    plt.show()
     plt.close()
     return True
 
@@ -398,17 +436,22 @@ def main(argv=None):
             print(f"[\u2713] Summary chart saved: {chart_path}")
         return
     if args.readlog:
+        filtered_lines = []
         try:
             with open(args.readlog, encoding="utf-8") as f:
                 for line in f:
                     if args.filter:
                         if args.filter in line:
                             print(line.rstrip("\n"))
+                            filtered_lines.append(line.rstrip("\n"))
                     elif "ERROR" in line:
                         print(line.rstrip("\n"))
         except FileNotFoundError:
             print(f"Dosya bulunamadi: {args.readlog}", file=sys.stderr)
             sys.exit(1)
+        if args.graph and args.filter and filtered_lines:
+            if generate_category_chart(filtered_lines, "graph_output.png"):
+                print("Grafik kaydedildi: graph_output.png")
     if args.detect_ddos:
         ip_pattern = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
         counts = {}

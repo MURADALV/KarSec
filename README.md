@@ -12,6 +12,7 @@ KarSec, Linux tabanlı bir siber güvenlik aracıdır. Komut satırından çalı
 - `--summary`: Log dosyasındaki INFO, WARNING ve ERROR sayısını özetler
 - `--scan-alert`: Log dosyasında nmap, masscan veya nikto içeren satırları listeler
 - `--graph-summary`: Log dosyasındaki INFO, WARNING ve ERROR sayısını grafik olarak kaydeder
+- `--graph`: Filtrelenmiş log kayıtlarından portscan, brute-force ve dos kategorileri için bar grafik oluşturur
 - `--save-summary`: Log dosyasındaki INFO, WARNING ve ERROR sayısını JSON dosyasına yazar
 - `--auto-mode`: Tek komutla summary, detect-ddos ve scan-alert işlemlerini uygular. Çıktılar varsayılan olarak `outputs/` klasörüne `auto_summary.json`, `auto_ddos.txt` ve `auto_scan.txt` dosyalarına kaydedilir. `--output-dir` ile farklı klasör belirtilebilir.
 - `--log-to-elk`: Log dosyasındaki her satırı Elasticsearch sunucusuna gönderir
