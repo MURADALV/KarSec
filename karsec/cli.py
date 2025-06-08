@@ -2,6 +2,7 @@ import argparse
 import logging
 import sys
 import pyfiglet
+import re
 
 from . import __version__
 
@@ -20,6 +21,10 @@ def parse_args(args=None):
     parser.add_argument(
         "--readlog",
         help="Okunacak log dosyasının yolu"
+    )
+    parser.add_argument(
+        "--detect-ddos",
+        help="DDoS tespiti yapilacak log dosyasi"
     )
     return parser.parse_args(args)
 
@@ -45,6 +50,21 @@ def main(argv=None):
         except FileNotFoundError:
             print(f"Dosya bulunamadi: {args.readlog}", file=sys.stderr)
             sys.exit(1)
+    if args.detect_ddos:
+        ip_pattern = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+        counts = {}
+        try:
+            with open(args.detect_ddos, encoding="utf-8") as f:
+                for line in f:
+                    if "TCP" in line and "SYN" in line:
+                        for ip in ip_pattern.findall(line):
+                            counts[ip] = counts.get(ip, 0) + 1
+        except FileNotFoundError:
+            print(f"Dosya bulunamadi: {args.detect_ddos}", file=sys.stderr)
+            sys.exit(1)
+        for ip, count in counts.items():
+            if count > 100:
+                print(f"DDoS \u015f\u00fcpheli IP: {ip} - {count}")
     logging.info("KarSec started")
 
 

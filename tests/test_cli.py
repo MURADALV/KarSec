@@ -20,6 +20,11 @@ def test_parse_readlog():
     assert args.readlog == "example.log"
 
 
+def test_parse_detect_ddos():
+    args = parse_args(["--detect-ddos", "ddos.log"])
+    assert args.detect_ddos == "ddos.log"
+
+
 def test_version_option(capsys):
     with pytest.raises(SystemExit) as exc:
         parse_args(["--version"])
@@ -61,5 +66,12 @@ def test_banner_display(capsys):
     captured = capsys.readouterr()
     assert "KarSec - Ağ Trafiği Analiz Aracı" in captured.out
     assert "by Murad Allahverdiyev" in captured.out
+
+
+def test_detect_ddos_output(capsys):
+    log_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "logs", "ddos.log"))
+    main(["--detect-ddos", log_path])
+    captured = capsys.readouterr()
+    assert "DDoS" in captured.out
 
 
