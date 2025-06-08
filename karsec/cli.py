@@ -53,6 +53,13 @@ def parse_args(args=None):
         help="Log dosyasindaki INFO, WARNING ve ERROR sayilarini grafik olarak goster"
     )
     parser.add_argument(
+        "--save-summary",
+        nargs=2,
+        metavar=("LOG", "OUT"),
+        help="Verilen log dosyasindaki INFO, WARNING ve ERROR sayilarini JSON biciminde dosyaya kaydet"
+    )
+
+    parser.add_argument(
         "--auto-mode",
         help="Summary, detect-ddos ve scan-alert islemlerini tek seferde calistir"
     )
@@ -217,6 +224,25 @@ def main(argv=None):
         plt.ylabel("Adet")
         plt.tight_layout()
         plt.show()
+    if args.save_summary:
+        log_path, out_path = args.save_summary
+        summary_counts = {"INFO": 0, "WARNING": 0, "ERROR": 0}
+        try:
+            with open(log_path, encoding="utf-8") as f:
+                for line in f:
+                    upper = line.upper()
+                    if "INFO" in upper:
+                        summary_counts["INFO"] += 1
+                    if "WARNING" in upper:
+                        summary_counts["WARNING"] += 1
+                    if "ERROR" in upper:
+                        summary_counts["ERROR"] += 1
+        except FileNotFoundError:
+            print(f"Dosya bulunamadi: {log_path}", file=sys.stderr)
+            sys.exit(1)
+        with open(out_path, "w", encoding="utf-8") as out_f:
+            json.dump(summary_counts, out_f)
+
     if args.summary:
         summary_counts = {"INFO": 0, "WARNING": 0, "ERROR": 0}
         try:

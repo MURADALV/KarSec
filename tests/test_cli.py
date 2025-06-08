@@ -2,6 +2,7 @@ import sys
 import subprocess
 import os
 import time
+import json
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -39,6 +40,11 @@ def test_parse_summary():
 def test_parse_graph_summary():
     args = parse_args(["--graph-summary", "some.log"])
     assert args.graph_summary == "some.log"
+
+
+def test_parse_save_summary():
+    args = parse_args(["--save-summary", "in.log", "out.json"])
+    assert args.save_summary == ["in.log", "out.json"]
 
 
 def test_parse_auto_mode():
@@ -113,6 +119,24 @@ def test_summary_output(capsys, tmp_path):
 def test_summary_file_not_found(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["--summary", "missing.log"])
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "Dosya bulunamadi" in captured.err
+
+
+def test_save_summary_output(tmp_path):
+    log_file = tmp_path / "save.log"
+    out_file = tmp_path / "summary.json"
+    log_file.write_text("INFO a\nWARNING b\nERROR c\nINFO d\n", encoding="utf-8")
+    main(["--save-summary", str(log_file), str(out_file)])
+    data = json.loads(out_file.read_text(encoding="utf-8"))
+    assert data == {"INFO": 2, "WARNING": 1, "ERROR": 1}
+
+
+def test_save_summary_file_not_found(capsys, tmp_path):
+    out_file = tmp_path / "out.json"
+    with pytest.raises(SystemExit) as exc:
+        main(["--save-summary", "missing.log", str(out_file)])
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "Dosya bulunamadi" in captured.err
