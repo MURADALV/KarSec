@@ -55,6 +55,11 @@ def test_parse_auto_mode():
     assert args.auto_mode == "log.log"
 
 
+def test_parse_output_dir():
+    args = parse_args(["--output-dir", "out"])
+    assert args.output_dir == "out"
+
+
 def test_parse_log_to_elk():
     args = parse_args(["--log-to-elk", "elk.log"])
     assert args.log_to_elk == "elk.log"
@@ -209,20 +214,21 @@ def test_log_to_elk_file_not_found(capsys):
     assert "Dosya bulunamadi" in captured.err
 
 
-def test_auto_mode_output(capsys, tmp_path):
+def test_auto_mode_output(tmp_path):
     log_file = tmp_path / "auto.log"
     lines = [f"192.168.1.1 TCP SYN {i}\n" for i in range(101)]
     log_file.write_text(
         "INFO start\nWARNING watch\nERROR fail\nINFO end\n" + "".join(lines) + "nmap scan\n",
         encoding="utf-8",
     )
-    main(["--auto-mode", str(log_file)])
-    captured = capsys.readouterr()
-    assert "INFO: 2" in captured.out
-    assert "WARNING: 1" in captured.out
-    assert "ERROR: 1" in captured.out
-    assert "DDoS" in captured.out
-    assert "nmap scan" in captured.out
+    out_dir = tmp_path / "out"
+    main(["--auto-mode", str(log_file), "--output-dir", str(out_dir)])
+    summary_data = json.loads((out_dir / "auto_summary.json").read_text(encoding="utf-8"))
+    assert summary_data == {"INFO": 2, "WARNING": 1, "ERROR": 1}
+    ddos_text = (out_dir / "auto_ddos.txt").read_text(encoding="utf-8")
+    assert "DDoS" in ddos_text
+    scan_text = (out_dir / "auto_scan.txt").read_text(encoding="utf-8")
+    assert "nmap scan" in scan_text
 
 
 def test_watch_output(tmp_path):
