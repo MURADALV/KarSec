@@ -12,70 +12,99 @@ from . import __version__
 
 
 def parse_args(args=None):
-    parser = argparse.ArgumentParser(prog="karsec", description="KarSec CLI")
-    parser.add_argument(
-        "--version",
-        action="version",
-        version=f"%(prog)s {__version__}"
-    )
-    parser.add_argument(
-        "-l", "--logfile",
-        help="Yazılacak log dosyasının yolu"
-    )
-    parser.add_argument(
-        "-r", "--readlog",
-        help="Okunacak log dosyasının yolu"
-    )
-    parser.add_argument(
-        "-W", "--watch",
-        help=(
-            "Verilen log dosyasini izler ve yeni satirlari anlik olarak goster"
-        ),
-    )
-    parser.add_argument(
-        "-f", "--filter",
-        help="--readlog ile birlikte kullanildiginda sadece bu kelimeyi iceren satirlari goster"
-    )
-    parser.add_argument(
-        "-d", "--detect-ddos",
-        help="DDoS tespiti yapilacak log dosyasi"
-    )
-    parser.add_argument(
-        "-s", "--summary",
-        help="Log dosyasindaki INFO, WARNING ve ERROR sayilarini ozetler"
-    )
-    parser.add_argument(
-        "-a", "--scan-alert",
-        help="Log dosyasinda nmap, masscan veya nikto iceren satirlari goster"
-    )
-    parser.add_argument(
-        "-g", "--graph-summary",
-        nargs="+",
-        metavar=("LOG", "OUT"),
-        help=(
-            "Log dosyasindaki INFO, WARNING ve ERROR sayilarini grafik olarak kaydet"
-        ),
-    )
-    parser.add_argument(
-        "-w", "--save-summary",
-        nargs=2,
-        metavar=("LOG", "OUT"),
-        help="Verilen log dosyasindaki INFO, WARNING ve ERROR sayilarini JSON biciminde dosyaya kaydet"
+    parser = argparse.ArgumentParser(
+        prog="karsec",
+        usage="%(prog)s [OPTION ...]",
+        description=f"KarSec v{__version__} - simple log analysis tool",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument(
-        "-A", "--auto-mode",
-        help="Summary, detect-ddos ve scan-alert islemlerini tek seferde calistir",
+    basic = parser.add_argument_group("Basic options")
+    basic.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+        help="show program's version number and exit",
     )
-    parser.add_argument(
+    basic.add_argument(
+        "-l",
+        "--logfile",
+        metavar="FILE",
+        help="write log messages to FILE",
+    )
+    basic.add_argument(
+        "-W",
+        "--watch",
+        metavar="FILE",
+        help="monitor FILE and print new lines as they appear",
+    )
+
+    analysis = parser.add_argument_group("Analysis options")
+    analysis.add_argument(
+        "-r",
+        "--readlog",
+        metavar="FILE",
+        help="read FILE and print lines containing ERROR",
+    )
+    analysis.add_argument(
+        "-f",
+        "--filter",
+        metavar="WORD",
+        help="with --readlog, only show lines containing WORD",
+    )
+    analysis.add_argument(
+        "-d",
+        "--detect-ddos",
+        metavar="FILE",
+        help="analyze FILE for possible DDoS activity",
+    )
+    analysis.add_argument(
+        "-s",
+        "--summary",
+        metavar="FILE",
+        help="summarize INFO/WARNING/ERROR counts in FILE",
+    )
+    analysis.add_argument(
+        "-a",
+        "--scan-alert",
+        metavar="FILE",
+        help="list lines mentioning nmap, masscan or nikto",
+    )
+    analysis.add_argument(
+        "-g",
+        "--graph-summary",
+        nargs="+",
+        metavar=("LOG", "OUT"),
+        help="save a bar chart for LOG summary to OUT (default: summary_graph.png)",
+    )
+    analysis.add_argument(
+        "-w",
+        "--save-summary",
+        nargs=2,
+        metavar=("LOG", "OUT"),
+        help="write INFO/WARNING/ERROR counts from LOG to JSON file OUT",
+    )
+    analysis.add_argument(
+        "-A",
+        "--auto-mode",
+        metavar="FILE",
+        help="run summary, detect-ddos and scan-alert on FILE",
+    )
+    analysis.add_argument(
         "--output-dir",
         default="outputs",
-        help="Otomatik islemlerin kaydedilecegi klasor (varsayilan: outputs)",
+        metavar="DIR",
+        help="directory for files created by auto mode",
     )
-    parser.add_argument(
-        "-e", "--log-to-elk",
-        help="Log dosyasindaki satirlari Elasticsearch'e gonder",
+
+    export = parser.add_argument_group("Export options")
+    export.add_argument(
+        "-e",
+        "--log-to-elk",
+        metavar="FILE",
+        help="send each JSON line from FILE to Elasticsearch",
     )
+
     return parser.parse_args(args)
 
 
@@ -118,7 +147,7 @@ def scan_alert_lines(lines):
     for lineno, line in enumerate(lines, 1):
         lower = line.lower()
         if any(keyword in lower for keyword in keywords):
-            alerts.append(f"{lineno}: {line.rstrip()}" )
+            alerts.append(f"{lineno}: {line.rstrip()}")
     return alerts
 
 
@@ -126,6 +155,7 @@ def generate_summary_chart(counts, out_path):
     """Generate a bar chart for the summary if matplotlib is available."""
     try:
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
     except Exception:
@@ -291,6 +321,7 @@ def main(argv=None):
             print(f"Dosya bulunamadi: {log_path}", file=sys.stderr)
             sys.exit(1)
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
@@ -352,4 +383,3 @@ def main(argv=None):
 
 if __name__ == "__main__":
     main()
-
