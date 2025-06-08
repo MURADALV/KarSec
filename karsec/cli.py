@@ -5,6 +5,8 @@ import pyfiglet
 import re
 import json
 import urllib.request
+import os
+import time
 
 from . import __version__
 
@@ -23,6 +25,12 @@ def parse_args(args=None):
     parser.add_argument(
         "--readlog",
         help="Okunacak log dosyasının yolu"
+    )
+    parser.add_argument(
+        "--watch",
+        help=(
+            "Verilen log dosyasini izler ve yeni satirlari anlik olarak goster"
+        ),
     )
     parser.add_argument(
         "--filter",
@@ -67,6 +75,22 @@ def main(argv=None):
     args = parse_args(argv)
     if args.logfile:
         logging.basicConfig(filename=args.logfile, level=logging.INFO)
+    if args.watch:
+        try:
+            with open(args.watch, encoding="utf-8") as f:
+                f.seek(0, os.SEEK_END)
+                while True:
+                    line = f.readline()
+                    if line:
+                        print(line.rstrip("\n"), flush=True)
+                    else:
+                        time.sleep(0.5)
+        except FileNotFoundError:
+            print(f"Dosya bulunamadi: {args.watch}", file=sys.stderr)
+            sys.exit(1)
+        except KeyboardInterrupt:
+            pass
+        return
     if args.log_to_elk:
         try:
             with open(args.log_to_elk, encoding="utf-8") as f:

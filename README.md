@@ -6,6 +6,7 @@ KarSec, Linux tabanlı bir siber güvenlik aracıdır. Komut satırından çalı
 - `--version`: Versiyon bilgisini gösterir
 - `--logfile`: Belirtilen dosyaya log kaydı başlatır
 - `--readlog`: Log dosyasını okuyarak "ERROR" içeren satırları gösterir
+- `--watch`: Log dosyasına eklenen satırları anlık olarak terminale yazar
 - `--filter`: --readlog ile birlikte kullanıldığında, sadece verilen kelimeyi içeren satırları gösterir
 - `--detect-ddos`: Log dosyasında TCP ve SYN içeren kayıtları IP'ye göre analiz eder
 - `--summary`: Log dosyasındaki INFO, WARNING ve ERROR sayısını özetler

@@ -1,6 +1,7 @@
 import sys
 import subprocess
 import os
+import time
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -18,6 +19,11 @@ def test_parse_logfile():
 def test_parse_readlog():
     args = parse_args(["--readlog", "example.log"])
     assert args.readlog == "example.log"
+
+
+def test_parse_watch():
+    args = parse_args(["--watch", "watch.log"])
+    assert args.watch == "watch.log"
 
 
 def test_parse_detect_ddos():
@@ -187,5 +193,24 @@ def test_auto_mode_output(capsys, tmp_path):
     assert "ERROR: 1" in captured.out
     assert "DDoS" in captured.out
     assert "nmap scan" in captured.out
+
+
+def test_watch_output(tmp_path):
+    log_file = tmp_path / "watch.log"
+    log_file.write_text("", encoding="utf-8")
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "karsec", "--watch", str(log_file)],
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        time.sleep(0.5)
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write("hello\n")
+        time.sleep(0.5)
+    finally:
+        proc.terminate()
+    out, _ = proc.communicate(timeout=2)
+    assert "hello" in out
 
 
