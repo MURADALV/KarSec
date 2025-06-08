@@ -19,37 +19,37 @@ def parse_args(args=None):
         version=f"%(prog)s {__version__}"
     )
     parser.add_argument(
-        "--logfile",
+        "-l", "--logfile",
         help="Yazılacak log dosyasının yolu"
     )
     parser.add_argument(
-        "--readlog",
+        "-r", "--readlog",
         help="Okunacak log dosyasının yolu"
     )
     parser.add_argument(
-        "--watch",
+        "-W", "--watch",
         help=(
             "Verilen log dosyasini izler ve yeni satirlari anlik olarak goster"
         ),
     )
     parser.add_argument(
-        "--filter",
+        "-f", "--filter",
         help="--readlog ile birlikte kullanildiginda sadece bu kelimeyi iceren satirlari goster"
     )
     parser.add_argument(
-        "--detect-ddos",
+        "-d", "--detect-ddos",
         help="DDoS tespiti yapilacak log dosyasi"
     )
     parser.add_argument(
-        "--summary",
+        "-s", "--summary",
         help="Log dosyasindaki INFO, WARNING ve ERROR sayilarini ozetler"
     )
     parser.add_argument(
-        "--scan-alert",
+        "-a", "--scan-alert",
         help="Log dosyasinda nmap, masscan veya nikto iceren satirlari goster"
     )
     parser.add_argument(
-        "--graph-summary",
+        "-g", "--graph-summary",
         nargs="+",
         metavar=("LOG", "OUT"),
         help=(
@@ -57,14 +57,14 @@ def parse_args(args=None):
         ),
     )
     parser.add_argument(
-        "--save-summary",
+        "-w", "--save-summary",
         nargs=2,
         metavar=("LOG", "OUT"),
         help="Verilen log dosyasindaki INFO, WARNING ve ERROR sayilarini JSON biciminde dosyaya kaydet"
     )
 
     parser.add_argument(
-        "--auto-mode",
+        "-A", "--auto-mode",
         help="Summary, detect-ddos ve scan-alert islemlerini tek seferde calistir",
     )
     parser.add_argument(
@@ -73,7 +73,7 @@ def parse_args(args=None):
         help="Otomatik islemlerin kaydedilecegi klasor (varsayilan: outputs)",
     )
     parser.add_argument(
-        "--log-to-elk",
+        "-e", "--log-to-elk",
         help="Log dosyasindaki satirlari Elasticsearch'e gonder",
     )
     return parser.parse_args(args)

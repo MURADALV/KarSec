@@ -70,6 +70,20 @@ def test_parse_filter():
     assert args.filter == "first"
 
 
+def test_short_option_aliases():
+    assert parse_args(["-l", "log.log"]).logfile == "log.log"
+    assert parse_args(["-r", "read.log"]).readlog == "read.log"
+    assert parse_args(["-W", "watch.log"]).watch == "watch.log"
+    assert parse_args(["-f", "term"]).filter == "term"
+    assert parse_args(["-d", "ddos.log"]).detect_ddos == "ddos.log"
+    assert parse_args(["-s", "sum.log"]).summary == "sum.log"
+    assert parse_args(["-a", "scan.log"]).scan_alert == "scan.log"
+    assert parse_args(["-g", "graph.log"]).graph_summary == ["graph.log"]
+    assert parse_args(["-w", "in.log", "out.json"]).save_summary == ["in.log", "out.json"]
+    assert parse_args(["-A", "auto.log"]).auto_mode == "auto.log"
+    assert parse_args(["-e", "elk.log"]).log_to_elk == "elk.log"
+
+
 def test_version_option(capsys):
     with pytest.raises(SystemExit) as exc:
         parse_args(["--version"])
