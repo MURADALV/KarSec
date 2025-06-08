@@ -1,6 +1,7 @@
 import argparse
 import logging
 import sys
+import pyfiglet
 
 from . import __version__
 
@@ -23,7 +24,15 @@ def parse_args(args=None):
     return parser.parse_args(args)
 
 
+def print_banner():
+    banner = pyfiglet.figlet_format("KarSec")
+    print(banner.rstrip())
+    print("KarSec - Ağ Trafiği Analiz Aracı")
+    print("by Murad Allahverdiyev")
+
+
 def main(argv=None):
+    print_banner()
     args = parse_args(argv)
     if args.logfile:
         logging.basicConfig(filename=args.logfile, level=logging.INFO)
