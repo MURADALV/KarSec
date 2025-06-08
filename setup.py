@@ -8,6 +8,7 @@ setup(
     install_requires=[
         'pyfiglet',
         'matplotlib',
+        'questionary',
     ],
     entry_points={
         'console_scripts': [

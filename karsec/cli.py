@@ -8,6 +8,8 @@ import urllib.request
 import os
 import time
 
+import questionary
+
 from . import __version__
 
 
@@ -97,6 +99,15 @@ def parse_args(args=None):
         help="directory for files created by auto mode",
     )
 
+    ui = parser.add_argument_group("Interface options")
+    ui.add_argument(
+        "--menu",
+        "--gui",
+        action="store_true",
+        dest="menu",
+        help="show interactive menu",
+    )
+
     export = parser.add_argument_group("Export options")
     export.add_argument(
         "-e",
@@ -176,6 +187,131 @@ def generate_summary_chart(counts, out_path):
     return True
 
 
+def run_summary(log_file):
+    try:
+        with open(log_file, encoding="utf-8") as f:
+            counts = summarize_lines(f)
+    except FileNotFoundError:
+        print(f"Dosya bulunamadi: {log_file}", file=sys.stderr)
+        return
+    print(
+        f"INFO: {counts['INFO']} WARNING: {counts['WARNING']} ERROR: {counts['ERROR']}"
+    )
+
+
+def run_detect_ddos(log_file):
+    try:
+        with open(log_file, encoding="utf-8") as f:
+            ddos_ips = detect_ddos_lines(f)
+    except FileNotFoundError:
+        print(f"Dosya bulunamadi: {log_file}", file=sys.stderr)
+        return
+    for ip, count in ddos_ips.items():
+        print(f"DDoS \u015f\u00fcpheli IP: {ip} - {count}")
+
+
+def run_scan_alert(log_file):
+    try:
+        with open(log_file, encoding="utf-8") as f:
+            alerts = scan_alert_lines(f)
+    except FileNotFoundError:
+        print(f"Dosya bulunamadi: {log_file}", file=sys.stderr)
+        return
+    for line in alerts:
+        print(line)
+
+
+def run_graph_summary(log_file, out_path="summary_graph.png"):
+    try:
+        with open(log_file, encoding="utf-8") as f:
+            counts = summarize_lines(f)
+    except FileNotFoundError:
+        print(f"Dosya bulunamadi: {log_file}", file=sys.stderr)
+        return
+    if generate_summary_chart(counts, out_path):
+        print(f"Grafik kaydedildi: {out_path}")
+
+
+def run_save_summary(log_file, out_path):
+    try:
+        with open(log_file, encoding="utf-8") as f:
+            counts = summarize_lines(f)
+    except FileNotFoundError:
+        print(f"Dosya bulunamadi: {log_file}", file=sys.stderr)
+        return
+    with open(out_path, "w", encoding="utf-8") as out_f:
+        json.dump(counts, out_f)
+
+
+def run_auto_mode(log_file, out_dir="outputs"):
+    try:
+        with open(log_file, encoding="utf-8") as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        print(f"Dosya bulunamadi: {log_file}", file=sys.stderr)
+        return
+
+    os.makedirs(out_dir, exist_ok=True)
+    counts = summarize_lines(lines)
+    print(
+        f"INFO: {counts['INFO']} WARNING: {counts['WARNING']} ERROR: {counts['ERROR']}"
+    )
+    ddos_ips = detect_ddos_lines(lines)
+    for ip, count in ddos_ips.items():
+        print(f"DDoS \u015f\u00fcpheli IP: {ip} - {count}")
+    alerts = scan_alert_lines(lines)
+    for line in alerts:
+        print(line)
+    summary_path = os.path.join(out_dir, "summary_output.json")
+    with open(summary_path, "w", encoding="utf-8") as out_f:
+        json.dump(counts, out_f)
+    chart_path = os.path.join(out_dir, "summary_chart.png")
+    if generate_summary_chart(counts, chart_path):
+        print(f"Grafik kaydedildi: {chart_path}")
+
+
+def interactive_menu():
+    choice = questionary.select(
+        "Select an option:",
+        choices=[
+            "Show Summary",
+            "Detect DDoS",
+            "Scan Alert",
+            "Graph Summary",
+            "Save Summary to JSON",
+            "Auto Mode",
+        ],
+    ).ask()
+
+    if choice == "Show Summary":
+        log = questionary.text("Log file path:").ask()
+        if log:
+            run_summary(log)
+    elif choice == "Detect DDoS":
+        log = questionary.text("Log file path:").ask()
+        if log:
+            run_detect_ddos(log)
+    elif choice == "Scan Alert":
+        log = questionary.text("Log file path:").ask()
+        if log:
+            run_scan_alert(log)
+    elif choice == "Graph Summary":
+        log = questionary.text("Log file path:").ask()
+        out = questionary.text("Output image path (summary_graph.png):").ask()
+        if log:
+            run_graph_summary(log, out or "summary_graph.png")
+    elif choice == "Save Summary to JSON":
+        log = questionary.text("Log file path:").ask()
+        out = questionary.text("Output JSON path:").ask()
+        if log and out:
+            run_save_summary(log, out)
+    elif choice == "Auto Mode":
+        log = questionary.text("Log file path:").ask()
+        out_dir = questionary.text("Output directory (outputs):").ask()
+        if log:
+            run_auto_mode(log, out_dir or "outputs")
+
+
 def main(argv=None):
     print_banner()
     args = parse_args(argv)
@@ -196,6 +332,9 @@ def main(argv=None):
             sys.exit(1)
         except KeyboardInterrupt:
             pass
+        return
+    if args.menu:
+        interactive_menu()
         return
     if args.log_to_elk:
         try:
