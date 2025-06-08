@@ -50,7 +50,11 @@ def parse_args(args=None):
     )
     parser.add_argument(
         "--graph-summary",
-        help="Log dosyasindaki INFO, WARNING ve ERROR sayilarini grafik olarak goster"
+        nargs="+",
+        metavar=("LOG", "OUT"),
+        help=(
+            "Log dosyasindaki INFO, WARNING ve ERROR sayilarini grafik olarak kaydet"
+        ),
     )
     parser.add_argument(
         "--save-summary",
@@ -196,9 +200,18 @@ def main(argv=None):
             print(f"Dosya bulunamadi: {args.scan_alert}", file=sys.stderr)
             sys.exit(1)
     if args.graph_summary:
+        # The first parameter is the log file. The second one, if provided,
+        # denotes the output image path.
+        log_path = args.graph_summary[0]
+        out_path = (
+            args.graph_summary[1]
+            if len(args.graph_summary) > 1
+            else "summary_graph.png"
+        )
+
         summary_counts = {"INFO": 0, "WARNING": 0, "ERROR": 0}
         try:
-            with open(args.graph_summary, encoding="utf-8") as f:
+            with open(log_path, encoding="utf-8") as f:
                 for line in f:
                     upper = line.upper()
                     if "INFO" in upper:
@@ -208,7 +221,7 @@ def main(argv=None):
                     if "ERROR" in upper:
                         summary_counts["ERROR"] += 1
         except FileNotFoundError:
-            print(f"Dosya bulunamadi: {args.graph_summary}", file=sys.stderr)
+            print(f"Dosya bulunamadi: {log_path}", file=sys.stderr)
             sys.exit(1)
         import matplotlib
         matplotlib.use("Agg")
@@ -218,12 +231,18 @@ def main(argv=None):
         values = [summary_counts[l] for l in labels]
         colors = ["blue", "orange", "red"]
 
+        # Prepare a clear and informative graph
+        plt.figure(figsize=(8, 6))
         plt.bar(labels, values, color=colors)
         plt.title("Log Ozeti")
         plt.xlabel("Seviye")
         plt.ylabel("Adet")
         plt.tight_layout()
-        plt.show()
+
+        # Save the plot instead of displaying it
+        plt.savefig(out_path)
+        plt.close()
+        print(f"Grafik kaydedildi: {out_path}")
     if args.save_summary:
         log_path, out_path = args.save_summary
         summary_counts = {"INFO": 0, "WARNING": 0, "ERROR": 0}
