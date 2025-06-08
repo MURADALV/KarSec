@@ -11,6 +11,7 @@ KarSec, Linux tabanlı bir siber güvenlik aracıdır. Komut satırından çalı
 - `--summary`: Log dosyasındaki INFO, WARNING ve ERROR sayısını özetler
 - `--scan-alert`: Log dosyasında nmap, masscan veya nikto içeren satırları listeler
 - `--graph-summary`: Log dosyasındaki INFO, WARNING ve ERROR sayısını grafik olarak gösterir
+- `--auto-mode`: Tek komutla summary, detect-ddos ve scan-alert işlemlerini uygular
 
 ## Kurulum
 ```bash
@@ -24,6 +25,7 @@ karsec --readlog logs/test.log
 karsec --detect-ddos logs/ddos.log
 karsec --summary logs/test.log
 karsec --scan-alert logs/test.log
+karsec --auto-mode logs/test.log
 Test nasıl yapılır?
 pytest tests/
 
