@@ -65,11 +65,16 @@ def parse_args(args=None):
 
     parser.add_argument(
         "--auto-mode",
-        help="Summary, detect-ddos ve scan-alert islemlerini tek seferde calistir"
+        help="Summary, detect-ddos ve scan-alert islemlerini tek seferde calistir",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default="outputs",
+        help="Otomatik islemlerin kaydedilecegi klasor (varsayilan: outputs)",
     )
     parser.add_argument(
         "--log-to-elk",
-        help="Log dosyasindaki satirlari Elasticsearch'e gonder"
+        help="Log dosyasindaki satirlari Elasticsearch'e gonder",
     )
     return parser.parse_args(args)
 
@@ -134,6 +139,10 @@ def main(argv=None):
         except FileNotFoundError:
             print(f"Dosya bulunamadi: {args.auto_mode}", file=sys.stderr)
             sys.exit(1)
+
+        out_dir = args.output_dir if args.output_dir else "outputs"
+        os.makedirs(out_dir, exist_ok=True)
+
         summary_counts = {"INFO": 0, "WARNING": 0, "ERROR": 0}
         for line in lines:
             upper = line.upper()
@@ -143,23 +152,26 @@ def main(argv=None):
                 summary_counts["WARNING"] += 1
             if "ERROR" in upper:
                 summary_counts["ERROR"] += 1
-        print(
-            f"INFO: {summary_counts['INFO']} WARNING: {summary_counts['WARNING']} ERROR: {summary_counts['ERROR']}"
-        )
+        with open(os.path.join(out_dir, "auto_summary.json"), "w", encoding="utf-8") as out_f:
+            json.dump(summary_counts, out_f)
+
         ip_pattern = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
         counts = {}
         for line in lines:
             if "TCP" in line and "SYN" in line:
                 for ip in ip_pattern.findall(line):
                     counts[ip] = counts.get(ip, 0) + 1
-        for ip, count in counts.items():
-            if count > 100:
-                print(f"DDoS \u015f\u00fcpheli IP: {ip} - {count}")
+        with open(os.path.join(out_dir, "auto_ddos.txt"), "w", encoding="utf-8") as out_f:
+            for ip, count in counts.items():
+                if count > 100:
+                    out_f.write(f"DDoS \u015f\u00fcpheli IP: {ip} - {count}\n")
+
         keywords = ("nmap", "masscan", "nikto")
-        for lineno, line in enumerate(lines, 1):
-            lower = line.lower()
-            if any(keyword in lower for keyword in keywords):
-                print(f"{lineno}: {line.rstrip('\n')}")
+        with open(os.path.join(out_dir, "auto_scan.txt"), "w", encoding="utf-8") as out_f:
+            for lineno, line in enumerate(lines, 1):
+                lower = line.lower()
+                if any(keyword in lower for keyword in keywords):
+                    out_f.write(f"{lineno}: {line.rstrip('\n')}\n")
         return
     if args.readlog:
         try:
