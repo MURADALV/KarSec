@@ -25,6 +25,11 @@ def test_parse_detect_ddos():
     assert args.detect_ddos == "ddos.log"
 
 
+def test_parse_summary():
+    args = parse_args(["--summary", "some.log"])
+    assert args.summary == "some.log"
+
+
 def test_version_option(capsys):
     with pytest.raises(SystemExit) as exc:
         parse_args(["--version"])
@@ -56,6 +61,24 @@ def test_readlog_output(capsys):
 def test_readlog_file_not_found(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["--readlog", "nonexistent.log"])
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "Dosya bulunamadi" in captured.err
+
+
+def test_summary_output(capsys, tmp_path):
+    log_file = tmp_path / "summary.log"
+    log_file.write_text("""INFO start\nWARNING watch\nERROR fail\nINFO end\n""", encoding="utf-8")
+    main(["--summary", str(log_file)])
+    captured = capsys.readouterr()
+    assert "INFO: 2" in captured.out
+    assert "WARNING: 1" in captured.out
+    assert "ERROR: 1" in captured.out
+
+
+def test_summary_file_not_found(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["--summary", "missing.log"])
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "Dosya bulunamadi" in captured.err

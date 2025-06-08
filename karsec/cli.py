@@ -26,6 +26,10 @@ def parse_args(args=None):
         "--detect-ddos",
         help="DDoS tespiti yapilacak log dosyasi"
     )
+    parser.add_argument(
+        "--summary",
+        help="Log dosyasindaki INFO, WARNING ve ERROR sayilarini ozetler"
+    )
     return parser.parse_args(args)
 
 
@@ -65,6 +69,24 @@ def main(argv=None):
         for ip, count in counts.items():
             if count > 100:
                 print(f"DDoS \u015f\u00fcpheli IP: {ip} - {count}")
+    if args.summary:
+        summary_counts = {"INFO": 0, "WARNING": 0, "ERROR": 0}
+        try:
+            with open(args.summary, encoding="utf-8") as f:
+                for line in f:
+                    upper = line.upper()
+                    if "INFO" in upper:
+                        summary_counts["INFO"] += 1
+                    if "WARNING" in upper:
+                        summary_counts["WARNING"] += 1
+                    if "ERROR" in upper:
+                        summary_counts["ERROR"] += 1
+        except FileNotFoundError:
+            print(f"Dosya bulunamadi: {args.summary}", file=sys.stderr)
+            sys.exit(1)
+        print(
+            f"INFO: {summary_counts['INFO']} WARNING: {summary_counts['WARNING']} ERROR: {summary_counts['ERROR']}"
+        )
     logging.info("KarSec started")
 
 
