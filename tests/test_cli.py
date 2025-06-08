@@ -35,6 +35,11 @@ def test_parse_graph_summary():
     assert args.graph_summary == "some.log"
 
 
+def test_parse_auto_mode():
+    args = parse_args(["--auto-mode", "log.log"])
+    assert args.auto_mode == "log.log"
+
+
 def test_parse_filter():
     args = parse_args(["--filter", "first"])
     assert args.filter == "first"
@@ -153,5 +158,21 @@ def test_scan_alert_file_not_found(capsys):
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "Dosya bulunamadi" in captured.err
+
+
+def test_auto_mode_output(capsys, tmp_path):
+    log_file = tmp_path / "auto.log"
+    lines = [f"192.168.1.1 TCP SYN {i}\n" for i in range(101)]
+    log_file.write_text(
+        "INFO start\nWARNING watch\nERROR fail\nINFO end\n" + "".join(lines) + "nmap scan\n",
+        encoding="utf-8",
+    )
+    main(["--auto-mode", str(log_file)])
+    captured = capsys.readouterr()
+    assert "INFO: 2" in captured.out
+    assert "WARNING: 1" in captured.out
+    assert "ERROR: 1" in captured.out
+    assert "DDoS" in captured.out
+    assert "nmap scan" in captured.out
 
 

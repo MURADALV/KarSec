@@ -42,6 +42,10 @@ def parse_args(args=None):
         "--graph-summary",
         help="Log dosyasindaki INFO, WARNING ve ERROR sayilarini grafik olarak goster"
     )
+    parser.add_argument(
+        "--auto-mode",
+        help="Summary, detect-ddos ve scan-alert islemlerini tek seferde calistir"
+    )
     return parser.parse_args(args)
 
 
@@ -57,6 +61,40 @@ def main(argv=None):
     args = parse_args(argv)
     if args.logfile:
         logging.basicConfig(filename=args.logfile, level=logging.INFO)
+    if args.auto_mode:
+        try:
+            with open(args.auto_mode, encoding="utf-8") as f:
+                lines = f.readlines()
+        except FileNotFoundError:
+            print(f"Dosya bulunamadi: {args.auto_mode}", file=sys.stderr)
+            sys.exit(1)
+        summary_counts = {"INFO": 0, "WARNING": 0, "ERROR": 0}
+        for line in lines:
+            upper = line.upper()
+            if "INFO" in upper:
+                summary_counts["INFO"] += 1
+            if "WARNING" in upper:
+                summary_counts["WARNING"] += 1
+            if "ERROR" in upper:
+                summary_counts["ERROR"] += 1
+        print(
+            f"INFO: {summary_counts['INFO']} WARNING: {summary_counts['WARNING']} ERROR: {summary_counts['ERROR']}"
+        )
+        ip_pattern = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+        counts = {}
+        for line in lines:
+            if "TCP" in line and "SYN" in line:
+                for ip in ip_pattern.findall(line):
+                    counts[ip] = counts.get(ip, 0) + 1
+        for ip, count in counts.items():
+            if count > 100:
+                print(f"DDoS \u015f\u00fcpheli IP: {ip} - {count}")
+        keywords = ("nmap", "masscan", "nikto")
+        for lineno, line in enumerate(lines, 1):
+            lower = line.lower()
+            if any(keyword in lower for keyword in keywords):
+                print(f"{lineno}: {line.rstrip('\n')}")
+        return
     if args.readlog:
         try:
             with open(args.readlog, encoding="utf-8") as f:
