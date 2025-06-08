@@ -23,6 +23,10 @@ def parse_args(args=None):
         help="Okunacak log dosyasının yolu"
     )
     parser.add_argument(
+        "--filter",
+        help="--readlog ile birlikte kullanildiginda sadece bu kelimeyi iceren satirlari goster"
+    )
+    parser.add_argument(
         "--detect-ddos",
         help="DDoS tespiti yapilacak log dosyasi"
     )
@@ -57,7 +61,10 @@ def main(argv=None):
         try:
             with open(args.readlog, encoding="utf-8") as f:
                 for line in f:
-                    if "ERROR" in line:
+                    if args.filter:
+                        if args.filter in line:
+                            print(line.rstrip("\n"))
+                    elif "ERROR" in line:
                         print(line.rstrip("\n"))
         except FileNotFoundError:
             print(f"Dosya bulunamadi: {args.readlog}", file=sys.stderr)
