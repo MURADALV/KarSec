@@ -98,3 +98,26 @@ def test_detect_ddos_output(capsys):
     assert "DDoS" in captured.out
 
 
+def test_parse_scan_alert():
+    args = parse_args(["--scan-alert", "scan.log"])
+    assert args.scan_alert == "scan.log"
+
+
+def test_scan_alert_output(capsys, tmp_path):
+    log_file = tmp_path / "scan.log"
+    log_file.write_text("Nmap taramasi\nNormal satir\nnikto test\n", encoding="utf-8")
+    main(["--scan-alert", str(log_file)])
+    captured = capsys.readouterr()
+    out_lines = captured.out.strip().splitlines()
+    assert any("1: Nmap taramasi" in line for line in out_lines)
+    assert any("3: nikto test" in line for line in out_lines)
+
+
+def test_scan_alert_file_not_found(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["--scan-alert", "yok.log"])
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "Dosya bulunamadi" in captured.err
+
+
