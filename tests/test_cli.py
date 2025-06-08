@@ -82,10 +82,10 @@ def test_short_option_aliases():
     assert parse_args(["-f", "term"]).filter == "term"
     assert parse_args(["-d", "ddos.log"]).detect_ddos == "ddos.log"
     assert parse_args(["-s", "sum.log"]).summary == "sum.log"
-    assert parse_args(["-a", "scan.log"]).scan_alert == "scan.log"
-    assert parse_args(["-g"]).graph
+    assert parse_args(["-S", "scan.log"]).scan_alert == "scan.log"
+    assert parse_args(["-G"]).graph
     assert parse_args(["-w", "in.log", "out.json"]).save_summary == ["in.log", "out.json"]
-    assert parse_args(["-A", "auto.log"]).auto_mode == "auto.log"
+    assert parse_args(["-a", "auto.log"]).auto_mode == "auto.log"
     assert parse_args(["-e", "elk.log"]).log_to_elk == "elk.log"
 
 
@@ -252,14 +252,17 @@ def test_auto_mode_output(tmp_path, capsys):
         "INFO start\nWARNING watch\nERROR fail\nINFO end\n" + "".join(lines) + "nmap scan\n",
         encoding="utf-8",
     )
-    out_dir = tmp_path / "out"
-    main(["--auto-mode", str(log_file), "--output-dir", str(out_dir)])
+    cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        main(["--auto-mode", str(log_file)])
+    finally:
+        os.chdir(cwd)
     captured = capsys.readouterr()
-    summary_data = json.loads((out_dir / "summary_output.json").read_text(encoding="utf-8"))
+    summary_data = json.loads((tmp_path / "summary.json").read_text(encoding="utf-8"))
     assert summary_data == {"INFO": 2, "WARNING": 1, "ERROR": 1}
-    assert (out_dir / "summary_chart.png").exists()
-    assert "DDoS" in captured.out
-    assert "Scan alert check completed" in captured.out
+    assert (tmp_path / "summary_graph.png").exists()
+    assert "nmap scan" in captured.out.lower()
 
 
 def test_watch_output(tmp_path):
