@@ -40,6 +40,11 @@ def test_parse_auto_mode():
     assert args.auto_mode == "log.log"
 
 
+def test_parse_log_to_elk():
+    args = parse_args(["--log-to-elk", "elk.log"])
+    assert args.log_to_elk == "elk.log"
+
+
 def test_parse_filter():
     args = parse_args(["--filter", "first"])
     assert args.filter == "first"
@@ -155,6 +160,14 @@ def test_scan_alert_output(capsys, tmp_path):
 def test_scan_alert_file_not_found(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["--scan-alert", "yok.log"])
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "Dosya bulunamadi" in captured.err
+
+
+def test_log_to_elk_file_not_found(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["--log-to-elk", "missing.log"])
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "Dosya bulunamadi" in captured.err

@@ -3,6 +3,8 @@ import logging
 import sys
 import pyfiglet
 import re
+import json
+import urllib.request
 
 from . import __version__
 
@@ -46,6 +48,10 @@ def parse_args(args=None):
         "--auto-mode",
         help="Summary, detect-ddos ve scan-alert islemlerini tek seferde calistir"
     )
+    parser.add_argument(
+        "--log-to-elk",
+        help="Log dosyasindaki satirlari Elasticsearch'e gonder"
+    )
     return parser.parse_args(args)
 
 
@@ -61,6 +67,31 @@ def main(argv=None):
     args = parse_args(argv)
     if args.logfile:
         logging.basicConfig(filename=args.logfile, level=logging.INFO)
+    if args.log_to_elk:
+        try:
+            with open(args.log_to_elk, encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        data = json.loads(line)
+                    except json.JSONDecodeError as e:
+                        print(f"JSON hatasi: {e}", file=sys.stderr)
+                        continue
+                    try:
+                        req = urllib.request.Request(
+                            "http://localhost:9200/logs/_doc",
+                            data=json.dumps(data).encode("utf-8"),
+                            headers={"Content-Type": "application/json"},
+                        )
+                        with urllib.request.urlopen(req) as resp:
+                            resp.read()
+                    except Exception as e:
+                        print(f"Elasticsearch hatasi: {e}", file=sys.stderr)
+        except FileNotFoundError:
+            print(f"Dosya bulunamadi: {args.log_to_elk}", file=sys.stderr)
+            sys.exit(1)
     if args.auto_mode:
         try:
             with open(args.auto_mode, encoding="utf-8") as f:
