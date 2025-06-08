@@ -34,7 +34,8 @@ def test_cli_version_subprocess():
         text=True,
         capture_output=True,
     )
-    assert result.stdout.strip() == f"karsec {__version__}"
+    lines = [line for line in result.stdout.splitlines() if line.strip()]
+    assert lines[-1].strip() == f"karsec {__version__}"
     assert result.returncode == 0
 
 
@@ -42,9 +43,9 @@ def test_readlog_output(capsys):
     log_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "logs", "ornek.log"))
     main(["--readlog", log_path])
     captured = capsys.readouterr()
-    lines = [line for line in captured.out.strip().splitlines() if line]
-    assert len(lines) == 2
-    assert all("ERROR" in line for line in lines)
+    error_lines = [line for line in captured.out.strip().splitlines() if "ERROR" in line]
+    assert len(error_lines) == 2
+    assert all("ERROR" in line for line in error_lines)
 
 
 def test_readlog_file_not_found(capsys):
@@ -53,5 +54,12 @@ def test_readlog_file_not_found(capsys):
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "Dosya bulunamadi" in captured.err
+
+
+def test_banner_display(capsys):
+    main([])
+    captured = capsys.readouterr()
+    assert "KarSec - Ağ Trafiği Analiz Aracı" in captured.out
+    assert "by Murad Allahverdiyev" in captured.out
 
 
