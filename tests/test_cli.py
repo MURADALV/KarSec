@@ -45,6 +45,11 @@ def test_parse_graph_summary():
     assert args.graph_summary == ["some.log", "out.png"]
 
 
+def test_parse_graph():
+    args = parse_args(["--graph"])
+    assert args.graph
+
+
 def test_parse_save_summary():
     args = parse_args(["--save-summary", "in.log", "out.json"])
     assert args.save_summary == ["in.log", "out.json"]
@@ -78,7 +83,7 @@ def test_short_option_aliases():
     assert parse_args(["-d", "ddos.log"]).detect_ddos == "ddos.log"
     assert parse_args(["-s", "sum.log"]).summary == "sum.log"
     assert parse_args(["-a", "scan.log"]).scan_alert == "scan.log"
-    assert parse_args(["-g", "graph.log"]).graph_summary == ["graph.log"]
+    assert parse_args(["-g"]).graph
     assert parse_args(["-w", "in.log", "out.json"]).save_summary == ["in.log", "out.json"]
     assert parse_args(["-A", "auto.log"]).auto_mode == "auto.log"
     assert parse_args(["-e", "elk.log"]).log_to_elk == "elk.log"
@@ -181,6 +186,18 @@ def test_graph_summary_file_not_found(capsys):
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "Dosya bulunamadi" in captured.err
+
+
+def test_graph_output(tmp_path, capsys):
+    log_file = tmp_path / "graph.log"
+    log_file.write_text(
+        "attack portscan\nattack brute-force\nattack dos\n", encoding="utf-8"
+    )
+    main(["--readlog", str(log_file), "--filter", "attack", "--graph"])
+    captured = capsys.readouterr()
+    assert "Grafik kaydedildi" in captured.out
+    assert os.path.exists("graph_output.png")
+    os.remove("graph_output.png")
 
 
 def test_banner_display(capsys):
