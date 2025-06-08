@@ -30,6 +30,10 @@ def parse_args(args=None):
         "--summary",
         help="Log dosyasindaki INFO, WARNING ve ERROR sayilarini ozetler"
     )
+    parser.add_argument(
+        "--scan-alert",
+        help="Log dosyasinda nmap, masscan veya nikto iceren satirlari goster"
+    )
     return parser.parse_args(args)
 
 
@@ -69,6 +73,17 @@ def main(argv=None):
         for ip, count in counts.items():
             if count > 100:
                 print(f"DDoS \u015f\u00fcpheli IP: {ip} - {count}")
+    if args.scan_alert:
+        keywords = ("nmap", "masscan", "nikto")
+        try:
+            with open(args.scan_alert, encoding="utf-8") as f:
+                for lineno, line in enumerate(f, 1):
+                    lower = line.lower()
+                    if any(keyword in lower for keyword in keywords):
+                        print(f"{lineno}: {line.rstrip('\n')}")
+        except FileNotFoundError:
+            print(f"Dosya bulunamadi: {args.scan_alert}", file=sys.stderr)
+            sys.exit(1)
     if args.summary:
         summary_counts = {"INFO": 0, "WARNING": 0, "ERROR": 0}
         try:
