@@ -86,6 +86,66 @@ def print_banner():
     print("by Murad Allahverdiyev")
 
 
+def summarize_lines(lines):
+    """Return counts of INFO, WARNING and ERROR entries."""
+    counts = {"INFO": 0, "WARNING": 0, "ERROR": 0}
+    for line in lines:
+        upper = line.upper()
+        if "INFO" in upper:
+            counts["INFO"] += 1
+        if "WARNING" in upper:
+            counts["WARNING"] += 1
+        if "ERROR" in upper:
+            counts["ERROR"] += 1
+    return counts
+
+
+def detect_ddos_lines(lines):
+    """Return dictionary of IPs suspected for DDoS based on SYN count."""
+    ip_pattern = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+    counts = {}
+    for line in lines:
+        if "TCP" in line and "SYN" in line:
+            for ip in ip_pattern.findall(line):
+                counts[ip] = counts.get(ip, 0) + 1
+    return {ip: count for ip, count in counts.items() if count > 100}
+
+
+def scan_alert_lines(lines):
+    """Return list of lines that contain common scan tool keywords."""
+    keywords = ("nmap", "masscan", "nikto")
+    alerts = []
+    for lineno, line in enumerate(lines, 1):
+        lower = line.lower()
+        if any(keyword in lower for keyword in keywords):
+            alerts.append(f"{lineno}: {line.rstrip()}" )
+    return alerts
+
+
+def generate_summary_chart(counts, out_path):
+    """Generate a bar chart for the summary if matplotlib is available."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except Exception:
+        return False
+
+    labels = ["INFO", "WARNING", "ERROR"]
+    values = [counts.get(l, 0) for l in labels]
+    colors = ["blue", "orange", "red"]
+
+    plt.figure(figsize=(8, 6))
+    plt.bar(labels, values, color=colors)
+    plt.title("Log Ozeti")
+    plt.xlabel("Seviye")
+    plt.ylabel("Adet")
+    plt.tight_layout()
+    plt.savefig(out_path)
+    plt.close()
+    return True
+
+
 def main(argv=None):
     print_banner()
     args = parse_args(argv)
@@ -143,35 +203,30 @@ def main(argv=None):
         out_dir = args.output_dir if args.output_dir else "outputs"
         os.makedirs(out_dir, exist_ok=True)
 
-        summary_counts = {"INFO": 0, "WARNING": 0, "ERROR": 0}
-        for line in lines:
-            upper = line.upper()
-            if "INFO" in upper:
-                summary_counts["INFO"] += 1
-            if "WARNING" in upper:
-                summary_counts["WARNING"] += 1
-            if "ERROR" in upper:
-                summary_counts["ERROR"] += 1
-        with open(os.path.join(out_dir, "auto_summary.json"), "w", encoding="utf-8") as out_f:
+        summary_counts = summarize_lines(lines)
+        print(
+            f"INFO: {summary_counts['INFO']} WARNING: {summary_counts['WARNING']} ERROR: {summary_counts['ERROR']}"
+        )
+        print("[\u2713] Log summary completed.")
+
+        ddos_ips = detect_ddos_lines(lines)
+        for ip, count in ddos_ips.items():
+            print(f"DDoS \u015f\u00fcpheli IP: {ip} - {count}")
+        print("[\u2713] DDoS analysis completed.")
+
+        scan_lines = scan_alert_lines(lines)
+        for entry in scan_lines:
+            print(entry)
+        print("[\u2713] Scan alert check completed.")
+
+        summary_path = os.path.join(out_dir, "summary_output.json")
+        with open(summary_path, "w", encoding="utf-8") as out_f:
             json.dump(summary_counts, out_f)
+        print(f"[\u2713] Summary saved: {summary_path}")
 
-        ip_pattern = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
-        counts = {}
-        for line in lines:
-            if "TCP" in line and "SYN" in line:
-                for ip in ip_pattern.findall(line):
-                    counts[ip] = counts.get(ip, 0) + 1
-        with open(os.path.join(out_dir, "auto_ddos.txt"), "w", encoding="utf-8") as out_f:
-            for ip, count in counts.items():
-                if count > 100:
-                    out_f.write(f"DDoS \u015f\u00fcpheli IP: {ip} - {count}\n")
-
-        keywords = ("nmap", "masscan", "nikto")
-        with open(os.path.join(out_dir, "auto_scan.txt"), "w", encoding="utf-8") as out_f:
-            for lineno, line in enumerate(lines, 1):
-                lower = line.lower()
-                if any(keyword in lower for keyword in keywords):
-                    out_f.write(f"{lineno}: {line.rstrip('\n')}\n")
+        chart_path = os.path.join(out_dir, "summary_chart.png")
+        if generate_summary_chart(summary_counts, chart_path):
+            print(f"[\u2713] Summary chart saved: {chart_path}")
         return
     if args.readlog:
         try:

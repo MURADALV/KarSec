@@ -228,7 +228,7 @@ def test_log_to_elk_file_not_found(capsys):
     assert "Dosya bulunamadi" in captured.err
 
 
-def test_auto_mode_output(tmp_path):
+def test_auto_mode_output(tmp_path, capsys):
     log_file = tmp_path / "auto.log"
     lines = [f"192.168.1.1 TCP SYN {i}\n" for i in range(101)]
     log_file.write_text(
@@ -237,12 +237,12 @@ def test_auto_mode_output(tmp_path):
     )
     out_dir = tmp_path / "out"
     main(["--auto-mode", str(log_file), "--output-dir", str(out_dir)])
-    summary_data = json.loads((out_dir / "auto_summary.json").read_text(encoding="utf-8"))
+    captured = capsys.readouterr()
+    summary_data = json.loads((out_dir / "summary_output.json").read_text(encoding="utf-8"))
     assert summary_data == {"INFO": 2, "WARNING": 1, "ERROR": 1}
-    ddos_text = (out_dir / "auto_ddos.txt").read_text(encoding="utf-8")
-    assert "DDoS" in ddos_text
-    scan_text = (out_dir / "auto_scan.txt").read_text(encoding="utf-8")
-    assert "nmap scan" in scan_text
+    assert (out_dir / "summary_chart.png").exists()
+    assert "DDoS" in captured.out
+    assert "Scan alert check completed" in captured.out
 
 
 def test_watch_output(tmp_path):
