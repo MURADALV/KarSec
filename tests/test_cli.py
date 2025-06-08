@@ -39,7 +39,10 @@ def test_parse_summary():
 
 def test_parse_graph_summary():
     args = parse_args(["--graph-summary", "some.log"])
-    assert args.graph_summary == "some.log"
+    assert args.graph_summary == ["some.log"]
+
+    args = parse_args(["--graph-summary", "some.log", "out.png"])
+    assert args.graph_summary == ["some.log", "out.png"]
 
 
 def test_parse_save_summary():
@@ -145,9 +148,12 @@ def test_save_summary_file_not_found(capsys, tmp_path):
 def test_graph_summary_output(capsys, tmp_path):
     log_file = tmp_path / "graph.log"
     log_file.write_text("INFO x\nWARNING y\nERROR z\nINFO a\n", encoding="utf-8")
-    main(["--graph-summary", str(log_file)])
+    out_file = tmp_path / "out.png"
+    main(["--graph-summary", str(log_file), str(out_file)])
     captured = capsys.readouterr()
     assert captured.err == ""
+    assert out_file.exists()
+    assert "Grafik kaydedildi" in captured.out
 
 
 def test_graph_summary_file_not_found(capsys):
