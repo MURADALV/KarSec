@@ -34,6 +34,10 @@ def parse_args(args=None):
         "--scan-alert",
         help="Log dosyasinda nmap, masscan veya nikto iceren satirlari goster"
     )
+    parser.add_argument(
+        "--graph-summary",
+        help="Log dosyasindaki INFO, WARNING ve ERROR sayilarini grafik olarak goster"
+    )
     return parser.parse_args(args)
 
 
@@ -84,6 +88,35 @@ def main(argv=None):
         except FileNotFoundError:
             print(f"Dosya bulunamadi: {args.scan_alert}", file=sys.stderr)
             sys.exit(1)
+    if args.graph_summary:
+        summary_counts = {"INFO": 0, "WARNING": 0, "ERROR": 0}
+        try:
+            with open(args.graph_summary, encoding="utf-8") as f:
+                for line in f:
+                    upper = line.upper()
+                    if "INFO" in upper:
+                        summary_counts["INFO"] += 1
+                    if "WARNING" in upper:
+                        summary_counts["WARNING"] += 1
+                    if "ERROR" in upper:
+                        summary_counts["ERROR"] += 1
+        except FileNotFoundError:
+            print(f"Dosya bulunamadi: {args.graph_summary}", file=sys.stderr)
+            sys.exit(1)
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        labels = ["INFO", "WARNING", "ERROR"]
+        values = [summary_counts[l] for l in labels]
+        colors = ["blue", "orange", "red"]
+
+        plt.bar(labels, values, color=colors)
+        plt.title("Log Ozeti")
+        plt.xlabel("Seviye")
+        plt.ylabel("Adet")
+        plt.tight_layout()
+        plt.show()
     if args.summary:
         summary_counts = {"INFO": 0, "WARNING": 0, "ERROR": 0}
         try:

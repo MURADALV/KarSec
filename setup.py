@@ -7,6 +7,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'pyfiglet',
+        'matplotlib',
     ],
     entry_points={
         'console_scripts': [

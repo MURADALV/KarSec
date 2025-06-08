@@ -30,6 +30,11 @@ def test_parse_summary():
     assert args.summary == "some.log"
 
 
+def test_parse_graph_summary():
+    args = parse_args(["--graph-summary", "some.log"])
+    assert args.graph_summary == "some.log"
+
+
 def test_version_option(capsys):
     with pytest.raises(SystemExit) as exc:
         parse_args(["--version"])
@@ -79,6 +84,22 @@ def test_summary_output(capsys, tmp_path):
 def test_summary_file_not_found(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["--summary", "missing.log"])
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "Dosya bulunamadi" in captured.err
+
+
+def test_graph_summary_output(capsys, tmp_path):
+    log_file = tmp_path / "graph.log"
+    log_file.write_text("INFO x\nWARNING y\nERROR z\nINFO a\n", encoding="utf-8")
+    main(["--graph-summary", str(log_file)])
+    captured = capsys.readouterr()
+    assert captured.err == ""
+
+
+def test_graph_summary_file_not_found(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["--graph-summary", "yok.log"])
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "Dosya bulunamadi" in captured.err
