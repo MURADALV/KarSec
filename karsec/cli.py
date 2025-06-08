@@ -64,22 +64,23 @@ def parse_args(args=None):
         "-s",
         "--summary",
         metavar="FILE",
-        help="summarize INFO/WARNING/ERROR counts in FILE",
+        help="Show summary (counts of INFO, WARNING, ERROR)",
     )
     analysis.add_argument(
-        "-a",
+        "-S",
         "--scan-alert",
         metavar="FILE",
-        help="list lines mentioning nmap, masscan or nikto",
-    )
-    analysis.add_argument(
-        "--graph-summary",
-        nargs="+",
-        metavar=("LOG", "OUT"),
-        help="save a bar chart for LOG summary to OUT (default: summary_graph.png)",
+        help="Detect scan-related alerts (Nmap, Masscan, etc.)",
     )
     analysis.add_argument(
         "-g",
+        "--graph-summary",
+        nargs="+",
+        metavar=("LOG", "OUT"),
+        help="Plot bar graph of log severity counts",
+    )
+    analysis.add_argument(
+        "-G",
         "--graph",
         action="store_true",
         help="show bar chart for filtered log categories",
@@ -89,13 +90,13 @@ def parse_args(args=None):
         "--save-summary",
         nargs=2,
         metavar=("LOG", "OUT"),
-        help="write INFO/WARNING/ERROR counts from LOG to JSON file OUT",
+        help="Save summary output to a JSON file",
     )
     analysis.add_argument(
-        "-A",
+        "-a",
         "--auto-mode",
         metavar="FILE",
-        help="run summary, detect-ddos and scan-alert on FILE",
+        help="Run all analyses sequentially",
     )
     analysis.add_argument(
         "--output-dir",
@@ -308,6 +309,66 @@ def run_auto_mode(log_file, out_dir="outputs"):
         print(f"Grafik kaydedildi: {chart_path}")
 
 
+def summary_analysis(log_path):
+    """Print a summary of INFO/WARNING/ERROR counts."""
+    try:
+        with open(log_path, encoding="utf-8") as f:
+            counts = summarize_lines(f)
+    except FileNotFoundError:
+        print(f"Dosya bulunamadi: {log_path}", file=sys.stderr)
+        sys.exit(1)
+    print(
+        f"INFO: {counts['INFO']} WARNING: {counts['WARNING']} ERROR: {counts['ERROR']}"
+    )
+    return counts
+
+
+def detect_scan_alerts(log_path):
+    """Print lines containing common scanning tool keywords."""
+    try:
+        with open(log_path, encoding="utf-8") as f:
+            alerts = scan_alert_lines(f)
+    except FileNotFoundError:
+        print(f"Dosya bulunamadi: {log_path}", file=sys.stderr)
+        sys.exit(1)
+    for line in alerts:
+        print(line)
+    return alerts
+
+
+def plot_graph(log_path, out_path="summary_graph.png"):
+    """Generate and save a summary bar chart."""
+    try:
+        with open(log_path, encoding="utf-8") as f:
+            counts = summarize_lines(f)
+    except FileNotFoundError:
+        print(f"Dosya bulunamadi: {log_path}", file=sys.stderr)
+        sys.exit(1)
+    if generate_summary_chart(counts, out_path):
+        print(f"Grafik kaydedildi: {out_path}")
+
+
+def save_summary(log_path, out_path):
+    """Save summary counts to a JSON file."""
+    try:
+        with open(log_path, encoding="utf-8") as f:
+            counts = summarize_lines(f)
+    except FileNotFoundError:
+        print(f"Dosya bulunamadi: {log_path}", file=sys.stderr)
+        sys.exit(1)
+    with open(out_path, "w", encoding="utf-8") as out_f:
+        json.dump(counts, out_f)
+    return counts
+
+
+def auto_mode_flow(log_path):
+    """Run all basic analyses in sequence."""
+    summary_analysis(log_path)
+    detect_scan_alerts(log_path)
+    save_summary(log_path, "summary.json")
+    plot_graph(log_path)
+
+
 def interactive_menu():
     choice = questionary.select(
         "Select an option:",
@@ -324,7 +385,7 @@ def interactive_menu():
     if choice == "Show Summary":
         log = questionary.text("Log file path:").ask()
         if log:
-            run_summary(log)
+            summary_analysis(log)
     elif choice == "Detect DDoS":
         log = questionary.text("Log file path:").ask()
         if log:
@@ -332,22 +393,22 @@ def interactive_menu():
     elif choice == "Scan Alert":
         log = questionary.text("Log file path:").ask()
         if log:
-            run_scan_alert(log)
+            detect_scan_alerts(log)
     elif choice == "Graph Summary":
         log = questionary.text("Log file path:").ask()
         out = questionary.text("Output image path (summary_graph.png):").ask()
         if log:
-            run_graph_summary(log, out or "summary_graph.png")
+            plot_graph(log, out or "summary_graph.png")
     elif choice == "Save Summary to JSON":
         log = questionary.text("Log file path:").ask()
         out = questionary.text("Output JSON path:").ask()
         if log and out:
-            run_save_summary(log, out)
+            save_summary(log, out)
     elif choice == "Auto Mode":
         log = questionary.text("Log file path:").ask()
         out_dir = questionary.text("Output directory (outputs):").ask()
         if log:
-            run_auto_mode(log, out_dir or "outputs")
+            auto_mode_flow(log)
 
 
 def main(argv=None):
@@ -400,40 +461,7 @@ def main(argv=None):
             print(f"Dosya bulunamadi: {args.log_to_elk}", file=sys.stderr)
             sys.exit(1)
     if args.auto_mode:
-        try:
-            with open(args.auto_mode, encoding="utf-8") as f:
-                lines = f.readlines()
-        except FileNotFoundError:
-            print(f"Dosya bulunamadi: {args.auto_mode}", file=sys.stderr)
-            sys.exit(1)
-
-        out_dir = args.output_dir if args.output_dir else "outputs"
-        os.makedirs(out_dir, exist_ok=True)
-
-        summary_counts = summarize_lines(lines)
-        print(
-            f"INFO: {summary_counts['INFO']} WARNING: {summary_counts['WARNING']} ERROR: {summary_counts['ERROR']}"
-        )
-        print("[\u2713] Log summary completed.")
-
-        ddos_ips = detect_ddos_lines(lines)
-        for ip, count in ddos_ips.items():
-            print(f"DDoS \u015f\u00fcpheli IP: {ip} - {count}")
-        print("[\u2713] DDoS analysis completed.")
-
-        scan_lines = scan_alert_lines(lines)
-        for entry in scan_lines:
-            print(entry)
-        print("[\u2713] Scan alert check completed.")
-
-        summary_path = os.path.join(out_dir, "summary_output.json")
-        with open(summary_path, "w", encoding="utf-8") as out_f:
-            json.dump(summary_counts, out_f)
-        print(f"[\u2713] Summary saved: {summary_path}")
-
-        chart_path = os.path.join(out_dir, "summary_chart.png")
-        if generate_summary_chart(summary_counts, chart_path):
-            print(f"[\u2713] Summary chart saved: {chart_path}")
+        auto_mode_flow(args.auto_mode)
         return
     if args.readlog:
         filtered_lines = []
@@ -468,98 +496,18 @@ def main(argv=None):
             if count > 100:
                 print(f"DDoS \u015f\u00fcpheli IP: {ip} - {count}")
     if args.scan_alert:
-        keywords = ("nmap", "masscan", "nikto")
-        try:
-            with open(args.scan_alert, encoding="utf-8") as f:
-                for lineno, line in enumerate(f, 1):
-                    lower = line.lower()
-                    if any(keyword in lower for keyword in keywords):
-                        print(f"{lineno}: {line.rstrip('\n')}")
-        except FileNotFoundError:
-            print(f"Dosya bulunamadi: {args.scan_alert}", file=sys.stderr)
-            sys.exit(1)
+        detect_scan_alerts(args.scan_alert)
     if args.graph_summary:
-        # The first parameter is the log file. The second one, if provided,
-        # denotes the output image path.
         log_path = args.graph_summary[0]
         out_path = (
-            args.graph_summary[1]
-            if len(args.graph_summary) > 1
-            else "summary_graph.png"
+            args.graph_summary[1] if len(args.graph_summary) > 1 else "summary_graph.png"
         )
-
-        summary_counts = {"INFO": 0, "WARNING": 0, "ERROR": 0}
-        try:
-            with open(log_path, encoding="utf-8") as f:
-                for line in f:
-                    upper = line.upper()
-                    if "INFO" in upper:
-                        summary_counts["INFO"] += 1
-                    if "WARNING" in upper:
-                        summary_counts["WARNING"] += 1
-                    if "ERROR" in upper:
-                        summary_counts["ERROR"] += 1
-        except FileNotFoundError:
-            print(f"Dosya bulunamadi: {log_path}", file=sys.stderr)
-            sys.exit(1)
-        import matplotlib
-
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-
-        labels = ["INFO", "WARNING", "ERROR"]
-        values = [summary_counts[l] for l in labels]
-        colors = ["blue", "orange", "red"]
-
-        # Prepare a clear and informative graph
-        plt.figure(figsize=(8, 6))
-        plt.bar(labels, values, color=colors)
-        plt.title("Log Ozeti")
-        plt.xlabel("Seviye")
-        plt.ylabel("Adet")
-        plt.tight_layout()
-
-        # Save the plot instead of displaying it
-        plt.savefig(out_path)
-        plt.close()
-        print(f"Grafik kaydedildi: {out_path}")
+        plot_graph(log_path, out_path)
     if args.save_summary:
         log_path, out_path = args.save_summary
-        summary_counts = {"INFO": 0, "WARNING": 0, "ERROR": 0}
-        try:
-            with open(log_path, encoding="utf-8") as f:
-                for line in f:
-                    upper = line.upper()
-                    if "INFO" in upper:
-                        summary_counts["INFO"] += 1
-                    if "WARNING" in upper:
-                        summary_counts["WARNING"] += 1
-                    if "ERROR" in upper:
-                        summary_counts["ERROR"] += 1
-        except FileNotFoundError:
-            print(f"Dosya bulunamadi: {log_path}", file=sys.stderr)
-            sys.exit(1)
-        with open(out_path, "w", encoding="utf-8") as out_f:
-            json.dump(summary_counts, out_f)
-
+        save_summary(log_path, out_path)
     if args.summary:
-        summary_counts = {"INFO": 0, "WARNING": 0, "ERROR": 0}
-        try:
-            with open(args.summary, encoding="utf-8") as f:
-                for line in f:
-                    upper = line.upper()
-                    if "INFO" in upper:
-                        summary_counts["INFO"] += 1
-                    if "WARNING" in upper:
-                        summary_counts["WARNING"] += 1
-                    if "ERROR" in upper:
-                        summary_counts["ERROR"] += 1
-        except FileNotFoundError:
-            print(f"Dosya bulunamadi: {args.summary}", file=sys.stderr)
-            sys.exit(1)
-        print(
-            f"INFO: {summary_counts['INFO']} WARNING: {summary_counts['WARNING']} ERROR: {summary_counts['ERROR']}"
-        )
+        summary_analysis(args.summary)
     logging.info("KarSec started")
 
 
