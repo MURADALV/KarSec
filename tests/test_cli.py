@@ -35,6 +35,11 @@ def test_parse_graph_summary():
     assert args.graph_summary == "some.log"
 
 
+def test_parse_filter():
+    args = parse_args(["--filter", "first"])
+    assert args.filter == "first"
+
+
 def test_version_option(capsys):
     with pytest.raises(SystemExit) as exc:
         parse_args(["--version"])
@@ -61,6 +66,14 @@ def test_readlog_output(capsys):
     error_lines = [line for line in captured.out.strip().splitlines() if "ERROR" in line]
     assert len(error_lines) == 2
     assert all("ERROR" in line for line in error_lines)
+
+
+def test_readlog_filter_output(capsys):
+    log_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "logs", "ornek.log"))
+    main(["--readlog", log_path, "--filter", "first"])
+    captured = capsys.readouterr()
+    lines = [line for line in captured.out.strip().splitlines() if "first" in line]
+    assert len(lines) == 1
 
 
 def test_readlog_file_not_found(capsys):
