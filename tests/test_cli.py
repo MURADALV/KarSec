@@ -348,7 +348,7 @@ def test_predict_model_missing(tmp_path, capsys):
     finally:
         os.chdir(cwd)
     captured = capsys.readouterr()
-    assert "Model yuklenemedi" in captured.err
+    assert "Model yuklenemedi, --predict ozelligi pasif." in captured.err
 
 
 def test_predict_output(tmp_path, capsys):
