@@ -7,6 +7,7 @@ import json
 import urllib.request
 import os
 import time
+import subprocess
 
 import questionary
 
@@ -40,6 +41,11 @@ def parse_args(args=None):
         "--watch",
         action="store_true",
         help="monitor the log file and print new lines as they appear",
+    )
+    basic.add_argument(
+        "--live",
+        action="store_true",
+        help="live monitor /var/log/suricata/eve.json for alerts",
     )
 
     analysis = parser.add_argument_group("Analysis options")
@@ -405,6 +411,49 @@ def auto_mode_flow(log_path):
     plot_graph(log_path)
 
 
+def run_live_monitor():
+    """Tail Suricata eve.json and classify alerts on the fly."""
+    path = "/var/log/suricata/eve.json"
+    try:
+        proc = subprocess.Popen(
+            ["tail", "-F", path], stdout=subprocess.PIPE, text=True
+        )
+    except FileNotFoundError:
+        print(f"Dosya bulunamadi: {path}", file=sys.stderr)
+        return
+    except Exception as e:
+        print(f"tail calistirilamadi: {e}", file=sys.stderr)
+        return
+    try:
+        for line in proc.stdout:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+            except json.JSONDecodeError as e:
+                print(f"JSON hatasi: {e}", file=sys.stderr)
+                continue
+            alert = data.get("alert")
+            if not alert:
+                continue
+            signature = alert.get("signature", "")
+            classification = None
+            if "Nmap" in signature:
+                classification = "Scan"
+            elif "SYN" in signature:
+                classification = "DDoS"
+            if classification:
+                print(f"{classification}: {signature}")
+            else:
+                print(signature)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        proc.terminate()
+        proc.wait()
+
+
 def interactive_menu():
     choice = questionary.select(
         "Select an option:",
@@ -451,6 +500,9 @@ def main(argv=None):
     print_banner()
     args = parse_args(argv)
     log_file = args.logfile
+    if args.live:
+        run_live_monitor()
+        return
     if args.watch:
         if not log_file:
             print("Log dosyasi belirtilmedi", file=sys.stderr)

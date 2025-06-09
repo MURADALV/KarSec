@@ -7,6 +7,7 @@ KarSec, Linux tabanlı bir siber güvenlik aracıdır. Komut satırından çalı
 - `--logfile`: Analiz edilecek log dosyası
 - `--readlog`: Log dosyasını okuyarak "ERROR" içeren satırları gösterir
 - `--watch`: Log dosyasına eklenen satırları anlık olarak terminale yazar
+- `--live`: Suricata eve.json dosyasını canlı takip ederek olası saldırıları sınıflandırır
 - `--filter`: --readlog ile birlikte kullanıldığında, sadece verilen kelimeyi içeren satırları gösterir
 - `--detect-ddos`: Log dosyasında TCP ve SYN içeren kayıtları IP'ye göre analiz eder
 - `--summary`: Log dosyasındaki INFO, WARNING ve ERROR sayısını özetler
@@ -33,6 +34,7 @@ karsec --logfile logs/test.log --save-summary summary.json
 karsec --logfile logs/test.log --scan-alert
 karsec --logfile logs/test.log --classify
 karsec --logfile logs/test.log --auto-mode --output-dir results
+karsec --live
 Test nasıl yapılır?
 pytest tests/
 
