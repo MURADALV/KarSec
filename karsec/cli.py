@@ -19,6 +19,7 @@ def parse_args(args=None):
         usage="%(prog)s [OPTION ...]",
         description=f"KarSec v{__version__} - simple log analysis tool",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        allow_abbrev=False,
     )
 
     basic = parser.add_argument_group("Basic options")
@@ -35,7 +36,7 @@ def parse_args(args=None):
         help="path to log file used by other commands",
     )
     basic.add_argument(
-        "-W",
+        "-w",
         "--watch",
         action="store_true",
         help="monitor the log file and print new lines as they appear",
@@ -55,7 +56,7 @@ def parse_args(args=None):
         help="with --readlog, only show lines containing WORD",
     )
     analysis.add_argument(
-        "-d",
+        "-dd",
         "--detect-ddos",
         action="store_true",
         help="analyze the log file for possible DDoS activity",
@@ -67,13 +68,13 @@ def parse_args(args=None):
         help="Show summary (counts of INFO, WARNING, ERROR)",
     )
     analysis.add_argument(
-        "-S",
+        "-sa",
         "--scan-alert",
         action="store_true",
         help="Detect scan-related alerts (Nmap, Masscan, etc.)",
     )
     analysis.add_argument(
-        "-g",
+        "-gS",
         "--graph-summary",
         metavar="OUT",
         help="Plot bar graph of log severity counts to OUT",
@@ -85,7 +86,7 @@ def parse_args(args=None):
         help="show bar chart for filtered log categories",
     )
     analysis.add_argument(
-        "-w",
+        "-sS",
         "--save-summary",
         metavar="OUT",
         help="Save summary output to a JSON file",
