@@ -502,7 +502,9 @@ def run_report(out_dir="outputs"):
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
     pdf.cell(0, 10, "KarSec Raporu", ln=True, align="C")
-    pdf.ln(5)
+    pdf.set_font("Arial", size=12)
+    pdf.cell(0, 8, time.strftime("%d/%m/%Y"), ln=True, align="C")
+    pdf.ln(4)
 
     if summary:
         pdf.set_font("Arial", "B", 12)
@@ -511,6 +513,8 @@ def run_report(out_dir="outputs"):
         for k, v in summary.items():
             pdf.cell(0, 8, f"{k}: {v}", ln=True)
         pdf.ln(4)
+        if pdf.get_y() > pdf.h - pdf.b_margin - 20:
+            pdf.add_page()
 
     if classify:
         pdf.set_font("Arial", "B", 12)
@@ -519,6 +523,8 @@ def run_report(out_dir="outputs"):
         for k, v in classify.items():
             pdf.cell(0, 8, f"{k}: {v}", ln=True)
         pdf.ln(4)
+        if pdf.get_y() > pdf.h - pdf.b_margin - 20:
+            pdf.add_page()
 
     if ddos:
         pdf.set_font("Arial", "B", 12)
@@ -527,6 +533,8 @@ def run_report(out_dir="outputs"):
         for ip, count in ddos.items():
             pdf.cell(0, 8, f"{ip}: {count}", ln=True)
         pdf.ln(4)
+        if pdf.get_y() > pdf.h - pdf.b_margin - 20:
+            pdf.add_page()
 
     if scan_alerts:
         pdf.set_font("Arial", "B", 12)
@@ -535,12 +543,16 @@ def run_report(out_dir="outputs"):
         for line in scan_alerts:
             pdf.multi_cell(0, 8, line)
         pdf.ln(2)
+        if pdf.get_y() > pdf.h - pdf.b_margin - 20:
+            pdf.add_page()
 
     if graph_path:
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 10, "Grafik", ln=True)
+        if pdf.get_y() + 60 > pdf.h - pdf.b_margin:
+            pdf.add_page()
         try:
-            pdf.image(graph_path, w=170)
+            pdf.image(graph_path, w=pdf.w - 2 * pdf.l_margin)
         except Exception:
             pass
         pdf.ln(2)
@@ -608,19 +620,20 @@ def main(argv=None):
             print("Log dosyasi belirtilmedi", file=sys.stderr)
             sys.exit(1)
         try:
-            with open(log_file, encoding="utf-8") as f:
-                f.seek(0, os.SEEK_END)
-                while True:
-                    line = f.readline()
-                    if line:
-                        print(line.rstrip("\n"), flush=True)
-                    else:
-                        time.sleep(0.5)
+            proc = subprocess.Popen(
+                ["tail", "-n", "0", "-F", log_file], stdout=subprocess.PIPE, text=True
+            )
         except FileNotFoundError:
             print(f"Dosya bulunamadi: {log_file}", file=sys.stderr)
             sys.exit(1)
+        try:
+            for line in proc.stdout:
+                print(line.rstrip("\n"), flush=True)
         except KeyboardInterrupt:
             pass
+        finally:
+            proc.terminate()
+            proc.wait()
         return
     if args.menu:
         interactive_menu()
