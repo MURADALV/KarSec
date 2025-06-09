@@ -80,6 +80,11 @@ def parse_args(args=None):
         help="Plot bar graph of log severity counts to OUT",
     )
     analysis.add_argument(
+        "--classify",
+        action="store_true",
+        help="Classify log lines by attack type",
+    )
+    analysis.add_argument(
         "-G",
         "--graph",
         action="store_true",
@@ -165,6 +170,26 @@ def scan_alert_lines(lines):
         if any(keyword in lower for keyword in keywords):
             alerts.append(f"{lineno}: {line.rstrip()}")
     return alerts
+
+
+def classify_lines(lines):
+    """Return counts of log lines matching attack categories."""
+    keywords = {
+        "Scan": ["scan", "nmap", "masscan", "nikto"],
+        "DDoS": ["ddos", "syn flood", "tcp syn"],
+        "Brute Force": ["brute", "failed password", "authentication"],
+        "Data Exfiltration": ["exfil", "ftp", "scp", "wget", "curl"],
+    }
+    counts = {key: 0 for key in keywords}
+    total = 0
+    for line in lines:
+        lower = line.lower()
+        for cat, words in keywords.items():
+            if any(w in lower for w in words):
+                counts[cat] += 1
+                total += 1
+                break
+    return counts, total
 
 
 def generate_summary_chart(counts, out_path):
@@ -306,6 +331,18 @@ def run_auto_mode(log_file, out_dir="outputs"):
     chart_path = os.path.join(out_dir, "summary_chart.png")
     if generate_summary_chart(counts, chart_path):
         print(f"Grafik kaydedildi: {chart_path}")
+
+
+def run_classify(log_file):
+    try:
+        with open(log_file, encoding="utf-8") as f:
+            counts, total = classify_lines(f)
+    except FileNotFoundError:
+        print(f"Dosya bulunamadi: {log_file}", file=sys.stderr)
+        return
+    for cat in ["Scan", "DDoS", "Brute Force", "Data Exfiltration"]:
+        print(f"{cat}: {counts[cat]}")
+    print(f"Toplam: {total}")
 
 
 def summary_analysis(log_path):
@@ -530,6 +567,11 @@ def main(argv=None):
             print("Log dosyasi belirtilmedi", file=sys.stderr)
             sys.exit(1)
         summary_analysis(log_file)
+    if args.classify:
+        if not log_file:
+            print("Log dosyasi belirtilmedi", file=sys.stderr)
+            sys.exit(1)
+        run_classify(log_file)
     logging.info("KarSec started")
 
 
