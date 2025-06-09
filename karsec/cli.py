@@ -367,8 +367,8 @@ def load_model(model_path="model.pkl"):
         import joblib
 
         return joblib.load(model_path)
-    except Exception as e:
-        print(f"Model yuklenemedi: {e}", file=sys.stderr)
+    except Exception:
+        print("Model yuklenemedi, --predict ozelligi pasif.", file=sys.stderr)
         return None
 
 
