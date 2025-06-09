@@ -72,6 +72,11 @@ def test_parse_filter():
     assert args.filter == "first"
 
 
+def test_parse_classify():
+    args = parse_args(["--classify"])
+    assert args.classify
+
+
 def test_short_option_aliases():
     assert parse_args(["-l", "log.log"]).logfile == "log.log"
     assert parse_args(["-r"]).readlog
@@ -279,5 +284,21 @@ def test_watch_output(tmp_path):
         proc.terminate()
     out, _ = proc.communicate(timeout=2)
     assert "hello" in out
+
+
+def test_classify_output(capsys, tmp_path):
+    log_file = tmp_path / "cls.log"
+    log_file.write_text(
+        "nmap scan\npossible ddos syn flood\nfailed password attempt\nftp exfil\n",
+        encoding="utf-8",
+    )
+    main(["--logfile", str(log_file), "--classify"])
+    captured = capsys.readouterr()
+    out_lines = captured.out.strip().splitlines()
+    assert any("Scan:" in line and "1" in line for line in out_lines)
+    assert any("DDoS:" in line and "1" in line for line in out_lines)
+    assert any("Brute Force:" in line and "1" in line for line in out_lines)
+    assert any("Data Exfiltration:" in line and "1" in line for line in out_lines)
+    assert any("Toplam: 4" in line for line in out_lines)
 
 
