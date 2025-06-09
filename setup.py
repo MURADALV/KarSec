@@ -9,6 +9,7 @@ setup(
         'pyfiglet',
         'matplotlib',
         'questionary',
+        'fpdf',
     ],
     entry_points={
         'console_scripts': [

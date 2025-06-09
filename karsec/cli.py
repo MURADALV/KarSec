@@ -131,6 +131,11 @@ def parse_args(args=None):
         action="store_true",
         help="send each JSON line from the log file to Elasticsearch",
     )
+    export.add_argument(
+        "--report",
+        action="store_true",
+        help="generate PDF report from previous results",
+    )
 
     return parser.parse_args(args)
 
@@ -454,6 +459,97 @@ def run_live_monitor():
         proc.wait()
 
 
+def run_report(out_dir="outputs"):
+    """Generate a PDF report from previous analysis results."""
+    from fpdf import FPDF
+
+    def load_json(path):
+        try:
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return None
+
+    os.makedirs(out_dir, exist_ok=True)
+    summary = load_json(os.path.join(out_dir, "summary_output.json"))
+    if summary is None:
+        summary = load_json(os.path.join(out_dir, "auto_summary.json"))
+    classify = load_json(os.path.join(out_dir, "classify_output.json"))
+    ddos = load_json(os.path.join(out_dir, "ddos_ips.json"))
+    if ddos is None:
+        txt_path = os.path.join(out_dir, "auto_ddos.txt")
+        if os.path.exists(txt_path):
+            ddos = {}
+            with open(txt_path, encoding="utf-8") as f:
+                for line in f:
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        try:
+                            ddos[parts[0]] = int(parts[1])
+                        except ValueError:
+                            ddos[parts[0]] = parts[1]
+    scan_path = os.path.join(out_dir, "scan_alerts.txt")
+    if not os.path.exists(scan_path):
+        scan_path = os.path.join(out_dir, "auto_scan.txt")
+    scan_alerts = []
+    if os.path.exists(scan_path):
+        with open(scan_path, encoding="utf-8") as f:
+            scan_alerts = [line.strip() for line in f if line.strip()]
+    graph_path = os.path.join(out_dir, "summary_chart.png")
+    if not os.path.exists(graph_path):
+        graph_path = None
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "KarSec Raporu", ln=True, align="C")
+    pdf.ln(5)
+
+    if summary:
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 10, "Ozet", ln=True)
+        pdf.set_font("Arial", size=12)
+        for k, v in summary.items():
+            pdf.cell(0, 8, f"{k}: {v}", ln=True)
+        pdf.ln(4)
+
+    if classify:
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 10, "Saldiri Siniflandirmasi", ln=True)
+        pdf.set_font("Arial", size=12)
+        for k, v in classify.items():
+            pdf.cell(0, 8, f"{k}: {v}", ln=True)
+        pdf.ln(4)
+
+    if ddos:
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 10, "DDoS IP'leri", ln=True)
+        pdf.set_font("Arial", size=12)
+        for ip, count in ddos.items():
+            pdf.cell(0, 8, f"{ip}: {count}", ln=True)
+        pdf.ln(4)
+
+    if scan_alerts:
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 10, "Taramalar", ln=True)
+        pdf.set_font("Arial", size=12)
+        for line in scan_alerts:
+            pdf.multi_cell(0, 8, line)
+        pdf.ln(2)
+
+    if graph_path:
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 10, "Grafik", ln=True)
+        try:
+            pdf.image(graph_path, w=170)
+        except Exception:
+            pass
+        pdf.ln(2)
+
+    out_pdf = os.path.join(out_dir, f"karsec_raporu_{time.strftime('%Y%m%d')}.pdf")
+    pdf.output(out_pdf)
+    print(f"Rapor kaydedildi: {out_pdf}")
+
+
 def interactive_menu():
     choice = questionary.select(
         "Select an option:",
@@ -464,6 +560,7 @@ def interactive_menu():
             "Graph Summary",
             "Save Summary to JSON",
             "Auto Mode",
+            "Generate Report",
         ],
     ).ask()
 
@@ -494,6 +591,9 @@ def interactive_menu():
         out_dir = questionary.text("Output directory (outputs):").ask()
         if log:
             auto_mode_flow(log)
+    elif choice == "Generate Report":
+        out_dir = questionary.text("Output directory (outputs):").ask()
+        run_report(out_dir or "outputs")
 
 
 def main(argv=None):
@@ -624,6 +724,8 @@ def main(argv=None):
             print("Log dosyasi belirtilmedi", file=sys.stderr)
             sys.exit(1)
         run_classify(log_file)
+    if args.report:
+        run_report(args.output_dir)
     logging.info("KarSec started")
 
 

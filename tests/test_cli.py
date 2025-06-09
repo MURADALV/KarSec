@@ -3,6 +3,7 @@ import subprocess
 import os
 import time
 import json
+import base64
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -75,6 +76,11 @@ def test_parse_log_to_elk():
 def test_parse_filter():
     args = parse_args(["--filter", "first"])
     assert args.filter == "first"
+
+
+def test_parse_report():
+    args = parse_args(["--report"])
+    assert args.report
 
 
 def test_parse_classify():
@@ -305,5 +311,25 @@ def test_classify_output(capsys, tmp_path):
     assert any("Brute Force:" in line and "1" in line for line in out_lines)
     assert any("Data Exfiltration:" in line and "1" in line for line in out_lines)
     assert any("Toplam: 4" in line for line in out_lines)
+
+
+def test_report_output(tmp_path):
+    out_dir = tmp_path / "outputs"
+    out_dir.mkdir()
+    (out_dir / "summary_output.json").write_text(json.dumps({"INFO": 1, "WARNING": 0, "ERROR": 0}), encoding="utf-8")
+    (out_dir / "classify_output.json").write_text(json.dumps({"Scan": 1}), encoding="utf-8")
+    (out_dir / "ddos_ips.json").write_text(json.dumps({"192.168.1.1": 150}), encoding="utf-8")
+    (out_dir / "scan_alerts.txt").write_text("1: nmap scan\n", encoding="utf-8")
+    img = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVQYV2NgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII=")
+    with open(out_dir / "summary_chart.png", "wb") as f:
+        f.write(img)
+    cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        main(["--report"])
+    finally:
+        os.chdir(cwd)
+    pdfs = list(out_dir.glob("karsec_raporu_*.pdf"))
+    assert pdfs
 
 
