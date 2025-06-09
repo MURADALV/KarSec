@@ -91,6 +91,11 @@ def parse_args(args=None):
         help="Classify log lines by attack type",
     )
     analysis.add_argument(
+        "--predict",
+        action="store_true",
+        help="Predict attack class for each line using a trained model",
+    )
+    analysis.add_argument(
         "-G",
         "--graph",
         action="store_true",
@@ -354,6 +359,39 @@ def run_classify(log_file):
     for cat in ["Scan", "DDoS", "Brute Force", "Data Exfiltration"]:
         print(f"{cat}: {counts[cat]}")
     print(f"Toplam: {total}")
+
+
+def load_model(model_path="model.pkl"):
+    """Load ML model pipeline from the given path."""
+    try:
+        import joblib
+
+        return joblib.load(model_path)
+    except Exception as e:
+        print(f"Model yuklenemedi: {e}", file=sys.stderr)
+        return None
+
+
+def run_predict(log_file, model_path="model.pkl"):
+    """Predict class for each log line using a trained model."""
+    model = load_model(model_path)
+    if model is None:
+        return
+    try:
+        with open(log_file, encoding="utf-8") as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        print(f"Dosya bulunamadi: {log_file}", file=sys.stderr)
+        return
+
+    counts = {}
+    for idx, line in enumerate(lines, 1):
+        prediction = model.predict([line.rstrip("\n")])[0]
+        counts[prediction] = counts.get(prediction, 0) + 1
+        print(f"{idx}: {prediction} | {line.rstrip()}".rstrip())
+
+    for cls, count in counts.items():
+        print(f"{cls}: {count}")
 
 
 def summary_analysis(log_path):
@@ -737,6 +775,11 @@ def main(argv=None):
             print("Log dosyasi belirtilmedi", file=sys.stderr)
             sys.exit(1)
         run_classify(log_file)
+    if args.predict:
+        if not log_file:
+            print("Log dosyasi belirtilmedi", file=sys.stderr)
+            sys.exit(1)
+        run_predict(log_file)
     if args.report:
         run_report(args.output_dir)
     logging.info("KarSec started")

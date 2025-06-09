@@ -88,6 +88,11 @@ def test_parse_classify():
     assert args.classify
 
 
+def test_parse_predict():
+    args = parse_args(["--predict"])
+    assert args.predict
+
+
 def test_short_option_aliases():
     assert parse_args(["-l", "log.log"]).logfile == "log.log"
     assert parse_args(["-r"]).readlog
@@ -331,5 +336,46 @@ def test_report_output(tmp_path):
         os.chdir(cwd)
     pdfs = list(out_dir.glob("karsec_raporu_*.pdf"))
     assert pdfs
+
+
+def test_predict_model_missing(tmp_path, capsys):
+    log_file = tmp_path / "pred.log"
+    log_file.write_text("test line\n", encoding="utf-8")
+    cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        main(["--logfile", str(log_file), "--predict"])
+    finally:
+        os.chdir(cwd)
+    captured = capsys.readouterr()
+    assert "Model yuklenemedi" in captured.err
+
+
+def test_predict_output(tmp_path, capsys):
+    log_file = tmp_path / "pred.log"
+    log_file.write_text("scan attempt\nbenign example\n", encoding="utf-8")
+    from sklearn.pipeline import Pipeline
+    from sklearn.feature_extraction.text import CountVectorizer
+    from sklearn.ensemble import RandomForestClassifier
+    import joblib
+
+    pipeline = Pipeline([
+        ("vect", CountVectorizer()),
+        ("clf", RandomForestClassifier(n_estimators=1, random_state=0)),
+    ])
+    pipeline.fit(["scan attempt", "benign example"], ["Scan", "Benign"])
+    model_path = tmp_path / "model.pkl"
+    joblib.dump(pipeline, model_path)
+
+    cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        main(["--logfile", str(log_file), "--predict"])
+    finally:
+        os.chdir(cwd)
+    captured = capsys.readouterr()
+    out_lines = [line for line in captured.out.strip().splitlines() if line]
+    assert any("Scan" in line for line in out_lines)
+    assert any("Benign" in line for line in out_lines)
 
 
