@@ -4,7 +4,7 @@ KarSec, Linux tabanlı bir siber güvenlik aracıdır. Komut satırından çalı
 
 ## Özellikler
 - `--version`: Versiyon bilgisini gösterir
-- `--logfile`: Belirtilen dosyaya log kaydı başlatır
+- `--logfile`: Analiz edilecek log dosyası
 - `--readlog`: Log dosyasını okuyarak "ERROR" içeren satırları gösterir
 - `--watch`: Log dosyasına eklenen satırları anlık olarak terminale yazar
 - `--filter`: --readlog ile birlikte kullanıldığında, sadece verilen kelimeyi içeren satırları gösterir
@@ -25,13 +25,12 @@ cd KarSec
 pip install .
 Nasıl kullanırım?
 karsec --version
-karsec --logfile logs/test.log
-karsec --readlog logs/test.log
-karsec --detect-ddos logs/ddos.log
-karsec --summary logs/test.log
-karsec --save-summary logs/test.log summary.json
-karsec --scan-alert logs/test.log
-karsec --auto-mode logs/test.log --output-dir results
+karsec --logfile logs/test.log --readlog
+karsec --logfile logs/test.log --detect-ddos
+karsec --logfile logs/test.log --summary
+karsec --logfile logs/test.log --save-summary summary.json
+karsec --logfile logs/test.log --scan-alert
+karsec --logfile logs/test.log --auto-mode --output-dir results
 Test nasıl yapılır?
 pytest tests/
 

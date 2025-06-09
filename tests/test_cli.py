@@ -18,31 +18,28 @@ def test_parse_logfile():
 
 
 def test_parse_readlog():
-    args = parse_args(["--readlog", "example.log"])
-    assert args.readlog == "example.log"
+    args = parse_args(["--readlog"])
+    assert args.readlog
 
 
 def test_parse_watch():
-    args = parse_args(["--watch", "watch.log"])
-    assert args.watch == "watch.log"
+    args = parse_args(["--watch"])
+    assert args.watch
 
 
 def test_parse_detect_ddos():
-    args = parse_args(["--detect-ddos", "ddos.log"])
-    assert args.detect_ddos == "ddos.log"
+    args = parse_args(["--detect-ddos"])
+    assert args.detect_ddos
 
 
 def test_parse_summary():
-    args = parse_args(["--summary", "some.log"])
-    assert args.summary == "some.log"
+    args = parse_args(["--summary"])
+    assert args.summary
 
 
 def test_parse_graph_summary():
-    args = parse_args(["--graph-summary", "some.log"])
-    assert args.graph_summary == ["some.log"]
-
-    args = parse_args(["--graph-summary", "some.log", "out.png"])
-    assert args.graph_summary == ["some.log", "out.png"]
+    args = parse_args(["--graph-summary", "out.png"])
+    assert args.graph_summary == "out.png"
 
 
 def test_parse_graph():
@@ -51,13 +48,13 @@ def test_parse_graph():
 
 
 def test_parse_save_summary():
-    args = parse_args(["--save-summary", "in.log", "out.json"])
-    assert args.save_summary == ["in.log", "out.json"]
+    args = parse_args(["--save-summary", "out.json"])
+    assert args.save_summary == "out.json"
 
 
 def test_parse_auto_mode():
-    args = parse_args(["--auto-mode", "log.log"])
-    assert args.auto_mode == "log.log"
+    args = parse_args(["--auto-mode"])
+    assert args.auto_mode
 
 
 def test_parse_output_dir():
@@ -66,8 +63,8 @@ def test_parse_output_dir():
 
 
 def test_parse_log_to_elk():
-    args = parse_args(["--log-to-elk", "elk.log"])
-    assert args.log_to_elk == "elk.log"
+    args = parse_args(["--log-to-elk"])
+    assert args.log_to_elk
 
 
 def test_parse_filter():
@@ -77,16 +74,16 @@ def test_parse_filter():
 
 def test_short_option_aliases():
     assert parse_args(["-l", "log.log"]).logfile == "log.log"
-    assert parse_args(["-r", "read.log"]).readlog == "read.log"
-    assert parse_args(["-W", "watch.log"]).watch == "watch.log"
+    assert parse_args(["-r"]).readlog
+    assert parse_args(["-W"]).watch
     assert parse_args(["-f", "term"]).filter == "term"
-    assert parse_args(["-d", "ddos.log"]).detect_ddos == "ddos.log"
-    assert parse_args(["-s", "sum.log"]).summary == "sum.log"
-    assert parse_args(["-S", "scan.log"]).scan_alert == "scan.log"
+    assert parse_args(["-d"]).detect_ddos
+    assert parse_args(["-s"]).summary
+    assert parse_args(["-S"]).scan_alert
     assert parse_args(["-G"]).graph
-    assert parse_args(["-w", "in.log", "out.json"]).save_summary == ["in.log", "out.json"]
-    assert parse_args(["-a", "auto.log"]).auto_mode == "auto.log"
-    assert parse_args(["-e", "elk.log"]).log_to_elk == "elk.log"
+    assert parse_args(["-w", "out.json"]).save_summary == "out.json"
+    assert parse_args(["-a"]).auto_mode
+    assert parse_args(["-e"]).log_to_elk
 
 
 def test_version_option(capsys):
@@ -110,7 +107,7 @@ def test_cli_version_subprocess():
 
 def test_readlog_output(capsys):
     log_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "logs", "ornek.log"))
-    main(["--readlog", log_path])
+    main(["--logfile", log_path, "--readlog"])
     captured = capsys.readouterr()
     error_lines = [line for line in captured.out.strip().splitlines() if "ERROR" in line]
     assert len(error_lines) == 2
@@ -119,7 +116,7 @@ def test_readlog_output(capsys):
 
 def test_readlog_filter_output(capsys):
     log_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "logs", "ornek.log"))
-    main(["--readlog", log_path, "--filter", "first"])
+    main(["--logfile", log_path, "--readlog", "--filter", "first"])
     captured = capsys.readouterr()
     lines = [line for line in captured.out.strip().splitlines() if "first" in line]
     assert len(lines) == 1
@@ -127,7 +124,7 @@ def test_readlog_filter_output(capsys):
 
 def test_readlog_file_not_found(capsys):
     with pytest.raises(SystemExit) as exc:
-        main(["--readlog", "nonexistent.log"])
+        main(["--logfile", "nonexistent.log", "--readlog"])
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "Dosya bulunamadi" in captured.err
@@ -136,7 +133,7 @@ def test_readlog_file_not_found(capsys):
 def test_summary_output(capsys, tmp_path):
     log_file = tmp_path / "summary.log"
     log_file.write_text("""INFO start\nWARNING watch\nERROR fail\nINFO end\n""", encoding="utf-8")
-    main(["--summary", str(log_file)])
+    main(["--logfile", str(log_file), "--summary"])
     captured = capsys.readouterr()
     assert "INFO: 2" in captured.out
     assert "WARNING: 1" in captured.out
@@ -145,7 +142,7 @@ def test_summary_output(capsys, tmp_path):
 
 def test_summary_file_not_found(capsys):
     with pytest.raises(SystemExit) as exc:
-        main(["--summary", "missing.log"])
+        main(["--logfile", "missing.log", "--summary"])
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "Dosya bulunamadi" in captured.err
@@ -155,7 +152,7 @@ def test_save_summary_output(tmp_path):
     log_file = tmp_path / "save.log"
     out_file = tmp_path / "summary.json"
     log_file.write_text("INFO a\nWARNING b\nERROR c\nINFO d\n", encoding="utf-8")
-    main(["--save-summary", str(log_file), str(out_file)])
+    main(["--logfile", str(log_file), "--save-summary", str(out_file)])
     data = json.loads(out_file.read_text(encoding="utf-8"))
     assert data == {"INFO": 2, "WARNING": 1, "ERROR": 1}
 
@@ -163,7 +160,7 @@ def test_save_summary_output(tmp_path):
 def test_save_summary_file_not_found(capsys, tmp_path):
     out_file = tmp_path / "out.json"
     with pytest.raises(SystemExit) as exc:
-        main(["--save-summary", "missing.log", str(out_file)])
+        main(["--logfile", "missing.log", "--save-summary", str(out_file)])
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "Dosya bulunamadi" in captured.err
@@ -173,7 +170,7 @@ def test_graph_summary_output(capsys, tmp_path):
     log_file = tmp_path / "graph.log"
     log_file.write_text("INFO x\nWARNING y\nERROR z\nINFO a\n", encoding="utf-8")
     out_file = tmp_path / "out.png"
-    main(["--graph-summary", str(log_file), str(out_file)])
+    main(["--logfile", str(log_file), "--graph-summary", str(out_file)])
     captured = capsys.readouterr()
     assert captured.err == ""
     assert out_file.exists()
@@ -182,7 +179,7 @@ def test_graph_summary_output(capsys, tmp_path):
 
 def test_graph_summary_file_not_found(capsys):
     with pytest.raises(SystemExit) as exc:
-        main(["--graph-summary", "yok.log"])
+        main(["--logfile", "yok.log", "--graph-summary", "out.png"])
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "Dosya bulunamadi" in captured.err
@@ -193,7 +190,7 @@ def test_graph_output(tmp_path, capsys):
     log_file.write_text(
         "attack portscan\nattack brute-force\nattack dos\n", encoding="utf-8"
     )
-    main(["--readlog", str(log_file), "--filter", "attack", "--graph"])
+    main(["--logfile", str(log_file), "--readlog", "--filter", "attack", "--graph"])
     captured = capsys.readouterr()
     assert "Grafik kaydedildi" in captured.out
     assert os.path.exists("graph_output.png")
@@ -209,20 +206,20 @@ def test_banner_display(capsys):
 
 def test_detect_ddos_output(capsys):
     log_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "logs", "ddos.log"))
-    main(["--detect-ddos", log_path])
+    main(["--logfile", log_path, "--detect-ddos"])
     captured = capsys.readouterr()
     assert "DDoS" in captured.out
 
 
 def test_parse_scan_alert():
-    args = parse_args(["--scan-alert", "scan.log"])
-    assert args.scan_alert == "scan.log"
+    args = parse_args(["--scan-alert"])
+    assert args.scan_alert
 
 
 def test_scan_alert_output(capsys, tmp_path):
     log_file = tmp_path / "scan.log"
     log_file.write_text("Nmap taramasi\nNormal satir\nnikto test\n", encoding="utf-8")
-    main(["--scan-alert", str(log_file)])
+    main(["--logfile", str(log_file), "--scan-alert"])
     captured = capsys.readouterr()
     out_lines = captured.out.strip().splitlines()
     assert any("1: Nmap taramasi" in line for line in out_lines)
@@ -231,7 +228,7 @@ def test_scan_alert_output(capsys, tmp_path):
 
 def test_scan_alert_file_not_found(capsys):
     with pytest.raises(SystemExit) as exc:
-        main(["--scan-alert", "yok.log"])
+        main(["--logfile", "yok.log", "--scan-alert"])
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "Dosya bulunamadi" in captured.err
@@ -239,7 +236,7 @@ def test_scan_alert_file_not_found(capsys):
 
 def test_log_to_elk_file_not_found(capsys):
     with pytest.raises(SystemExit) as exc:
-        main(["--log-to-elk", "missing.log"])
+        main(["--logfile", "missing.log", "--log-to-elk"])
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "Dosya bulunamadi" in captured.err
@@ -255,7 +252,7 @@ def test_auto_mode_output(tmp_path, capsys):
     cwd = os.getcwd()
     os.chdir(tmp_path)
     try:
-        main(["--auto-mode", str(log_file)])
+        main(["--logfile", str(log_file), "--auto-mode"])
     finally:
         os.chdir(cwd)
     captured = capsys.readouterr()
@@ -269,7 +266,7 @@ def test_watch_output(tmp_path):
     log_file = tmp_path / "watch.log"
     log_file.write_text("", encoding="utf-8")
     proc = subprocess.Popen(
-        [sys.executable, "-m", "karsec", "--watch", str(log_file)],
+        [sys.executable, "-m", "karsec", "--logfile", str(log_file), "--watch"],
         stdout=subprocess.PIPE,
         text=True,
     )

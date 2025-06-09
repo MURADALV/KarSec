@@ -32,21 +32,21 @@ def parse_args(args=None):
         "-l",
         "--logfile",
         metavar="FILE",
-        help="write log messages to FILE",
+        help="path to log file used by other commands",
     )
     basic.add_argument(
         "-W",
         "--watch",
-        metavar="FILE",
-        help="monitor FILE and print new lines as they appear",
+        action="store_true",
+        help="monitor the log file and print new lines as they appear",
     )
 
     analysis = parser.add_argument_group("Analysis options")
     analysis.add_argument(
         "-r",
         "--readlog",
-        metavar="FILE",
-        help="read FILE and print lines containing ERROR",
+        action="store_true",
+        help="print lines containing ERROR from the log file",
     )
     analysis.add_argument(
         "-f",
@@ -57,27 +57,26 @@ def parse_args(args=None):
     analysis.add_argument(
         "-d",
         "--detect-ddos",
-        metavar="FILE",
-        help="analyze FILE for possible DDoS activity",
+        action="store_true",
+        help="analyze the log file for possible DDoS activity",
     )
     analysis.add_argument(
         "-s",
         "--summary",
-        metavar="FILE",
+        action="store_true",
         help="Show summary (counts of INFO, WARNING, ERROR)",
     )
     analysis.add_argument(
         "-S",
         "--scan-alert",
-        metavar="FILE",
+        action="store_true",
         help="Detect scan-related alerts (Nmap, Masscan, etc.)",
     )
     analysis.add_argument(
         "-g",
         "--graph-summary",
-        nargs="+",
-        metavar=("LOG", "OUT"),
-        help="Plot bar graph of log severity counts",
+        metavar="OUT",
+        help="Plot bar graph of log severity counts to OUT",
     )
     analysis.add_argument(
         "-G",
@@ -88,14 +87,13 @@ def parse_args(args=None):
     analysis.add_argument(
         "-w",
         "--save-summary",
-        nargs=2,
-        metavar=("LOG", "OUT"),
+        metavar="OUT",
         help="Save summary output to a JSON file",
     )
     analysis.add_argument(
         "-a",
         "--auto-mode",
-        metavar="FILE",
+        action="store_true",
         help="Run all analyses sequentially",
     )
     analysis.add_argument(
@@ -118,8 +116,8 @@ def parse_args(args=None):
     export.add_argument(
         "-e",
         "--log-to-elk",
-        metavar="FILE",
-        help="send each JSON line from FILE to Elasticsearch",
+        action="store_true",
+        help="send each JSON line from the log file to Elasticsearch",
     )
 
     return parser.parse_args(args)
@@ -414,11 +412,13 @@ def interactive_menu():
 def main(argv=None):
     print_banner()
     args = parse_args(argv)
-    if args.logfile:
-        logging.basicConfig(filename=args.logfile, level=logging.INFO)
+    log_file = args.logfile
     if args.watch:
+        if not log_file:
+            print("Log dosyasi belirtilmedi", file=sys.stderr)
+            sys.exit(1)
         try:
-            with open(args.watch, encoding="utf-8") as f:
+            with open(log_file, encoding="utf-8") as f:
                 f.seek(0, os.SEEK_END)
                 while True:
                     line = f.readline()
@@ -427,7 +427,7 @@ def main(argv=None):
                     else:
                         time.sleep(0.5)
         except FileNotFoundError:
-            print(f"Dosya bulunamadi: {args.watch}", file=sys.stderr)
+            print(f"Dosya bulunamadi: {log_file}", file=sys.stderr)
             sys.exit(1)
         except KeyboardInterrupt:
             pass
@@ -436,8 +436,11 @@ def main(argv=None):
         interactive_menu()
         return
     if args.log_to_elk:
+        if not log_file:
+            print("Log dosyasi belirtilmedi", file=sys.stderr)
+            sys.exit(1)
         try:
-            with open(args.log_to_elk, encoding="utf-8") as f:
+            with open(log_file, encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if not line:
@@ -458,15 +461,21 @@ def main(argv=None):
                     except Exception as e:
                         print(f"Elasticsearch hatasi: {e}", file=sys.stderr)
         except FileNotFoundError:
-            print(f"Dosya bulunamadi: {args.log_to_elk}", file=sys.stderr)
+            print(f"Dosya bulunamadi: {log_file}", file=sys.stderr)
             sys.exit(1)
     if args.auto_mode:
-        auto_mode_flow(args.auto_mode)
+        if not log_file:
+            print("Log dosyasi belirtilmedi", file=sys.stderr)
+            sys.exit(1)
+        auto_mode_flow(log_file)
         return
     if args.readlog:
+        if not log_file:
+            print("Log dosyasi belirtilmedi", file=sys.stderr)
+            sys.exit(1)
         filtered_lines = []
         try:
-            with open(args.readlog, encoding="utf-8") as f:
+            with open(log_file, encoding="utf-8") as f:
                 for line in f:
                     if args.filter:
                         if args.filter in line:
@@ -475,39 +484,51 @@ def main(argv=None):
                     elif "ERROR" in line:
                         print(line.rstrip("\n"))
         except FileNotFoundError:
-            print(f"Dosya bulunamadi: {args.readlog}", file=sys.stderr)
+            print(f"Dosya bulunamadi: {log_file}", file=sys.stderr)
             sys.exit(1)
         if args.graph and args.filter and filtered_lines:
             if generate_category_chart(filtered_lines, "graph_output.png"):
                 print("Grafik kaydedildi: graph_output.png")
     if args.detect_ddos:
+        if not log_file:
+            print("Log dosyasi belirtilmedi", file=sys.stderr)
+            sys.exit(1)
         ip_pattern = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
         counts = {}
         try:
-            with open(args.detect_ddos, encoding="utf-8") as f:
+            with open(log_file, encoding="utf-8") as f:
                 for line in f:
                     if "TCP" in line and "SYN" in line:
                         for ip in ip_pattern.findall(line):
                             counts[ip] = counts.get(ip, 0) + 1
         except FileNotFoundError:
-            print(f"Dosya bulunamadi: {args.detect_ddos}", file=sys.stderr)
+            print(f"Dosya bulunamadi: {log_file}", file=sys.stderr)
             sys.exit(1)
         for ip, count in counts.items():
             if count > 100:
                 print(f"DDoS \u015f\u00fcpheli IP: {ip} - {count}")
     if args.scan_alert:
-        detect_scan_alerts(args.scan_alert)
+        if not log_file:
+            print("Log dosyasi belirtilmedi", file=sys.stderr)
+            sys.exit(1)
+        detect_scan_alerts(log_file)
     if args.graph_summary:
-        log_path = args.graph_summary[0]
-        out_path = (
-            args.graph_summary[1] if len(args.graph_summary) > 1 else "summary_graph.png"
-        )
-        plot_graph(log_path, out_path)
+        if not log_file:
+            print("Log dosyasi belirtilmedi", file=sys.stderr)
+            sys.exit(1)
+        out_path = args.graph_summary
+        plot_graph(log_file, out_path)
     if args.save_summary:
-        log_path, out_path = args.save_summary
-        save_summary(log_path, out_path)
+        if not log_file:
+            print("Log dosyasi belirtilmedi", file=sys.stderr)
+            sys.exit(1)
+        out_path = args.save_summary
+        save_summary(log_file, out_path)
     if args.summary:
-        summary_analysis(args.summary)
+        if not log_file:
+            print("Log dosyasi belirtilmedi", file=sys.stderr)
+            sys.exit(1)
+        summary_analysis(log_file)
     logging.info("KarSec started")
 
 
