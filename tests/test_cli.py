@@ -75,13 +75,13 @@ def test_parse_filter():
 def test_short_option_aliases():
     assert parse_args(["-l", "log.log"]).logfile == "log.log"
     assert parse_args(["-r"]).readlog
-    assert parse_args(["-W"]).watch
+    assert parse_args(["-w"]).watch
     assert parse_args(["-f", "term"]).filter == "term"
-    assert parse_args(["-d"]).detect_ddos
+    assert parse_args(["-dd"]).detect_ddos
     assert parse_args(["-s"]).summary
-    assert parse_args(["-S"]).scan_alert
+    assert parse_args(["-sa"]).scan_alert
     assert parse_args(["-G"]).graph
-    assert parse_args(["-w", "out.json"]).save_summary == "out.json"
+    assert parse_args(["-sS", "out.json"]).save_summary == "out.json"
     assert parse_args(["-a"]).auto_mode
     assert parse_args(["-e"]).log_to_elk
 
