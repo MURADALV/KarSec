@@ -27,6 +27,11 @@ def test_parse_watch():
     assert args.watch
 
 
+def test_parse_live():
+    args = parse_args(["--live"])
+    assert args.live
+
+
 def test_parse_detect_ddos():
     args = parse_args(["--detect-ddos"])
     assert args.detect_ddos
